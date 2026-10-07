@@ -70,7 +70,7 @@
                         </form>
                         <div class="pull-right" style="margin-right: 20px;">
 
-                            <a href="<?= base_url('data'); ?>" class="btn btn-danger btn-md">Kembali</a>
+                            <a href="<?= base_url('data/bukudigital'); ?>" class="btn btn-danger btn-md">Kembali</a>
                         </div>
                     </div>
                 </div>
