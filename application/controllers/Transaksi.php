@@ -294,60 +294,144 @@ class Transaksi extends CI_Controller
 	}
 
 	public function dendaproses()
-	{
-		if (!empty($this->input->post('tambah'))) {
-			$post = $this->input->post();
-			$data = array(
-				'harga_denda' => $post['harga'],
-				'stat' => 'Tidak Aktif',
-				'tgl_tetap' => date('Y-m-d')
-			);
+{
+    // =========================================================
+    // TAMBAH HARGA DENDA
+    // =========================================================
+    if (!empty($this->input->post('tambah'))) {
 
-			$this->db->insert('tbl_biaya_denda', $data);
+        $post = $this->input->post();
 
-			$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-success">
-			<p> Tambah  Harga Denda  Sukses !</p>
-			</div></div>');
-			redirect(base_url('transaksi/denda'));
-		}
+        $data = array(
+            'harga_denda'          => $post['harga'],
+            'jenis_denda'         => $post['jenis_denda'],
+            'maksimal_perhitungan'=> $post['maksimal_perhitungan'],
+            'stat'                => 'Tidak Aktif',
+            'tgl_tetap'           => date('Y-m-d')
+        );
 
-		if (!empty($this->input->post('edit'))) {
-			$dd = $this->M_Admin->get_tableid('tbl_biaya_denda', 'stat', 'Aktif');
-			foreach ($dd as $isi) {
-				$data1 = array(
-					'stat' => 'Tidak Aktif',
-				);
-				$this->db->where('id_biaya_denda', $isi['id_biaya_denda']);
-				$this->db->update('tbl_biaya_denda', $data1);
-			}
+        $this->db->insert('tbl_biaya_denda', $data);
 
-			$post = $this->input->post();
-			$data = array(
-				'harga_denda' => $post['harga'],
-				'stat' => $post['status'],
-				'tgl_tetap' => date('Y-m-d')
-			);
+        $this->session->set_flashdata(
+            'pesan',
+            '<div id="notifikasi">
+                <div class="alert alert-success">
+                    <p>Tambah Harga Denda Sukses !</p>
+                </div>
+            </div>'
+        );
 
-			$this->db->where('id_biaya_denda', $post['edit']);
-			$this->db->update('tbl_biaya_denda', $data);
+        redirect(base_url('transaksi/denda'));
+    }
 
 
-			$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-success">
-			<p> Edit Harga Denda  Sukses !</p>
-			</div></div>');
-			redirect(base_url('transaksi/denda'));
-		}
+    // =========================================================
+    // EDIT HARGA DENDA
+    // =========================================================
+    if (!empty($this->input->post('edit'))) {
 
-		if (!empty($this->input->get('denda_id'))) {
-			$this->db->where('id_biaya_denda', $this->input->get('denda_id'));
-			$this->db->delete('tbl_biaya_denda');
+        // -----------------------------------------
+        // Nonaktifkan semua denda yang sebelumnya aktif
+        // -----------------------------------------
+        $dd = $this->M_Admin->get_tableid(
+            'tbl_biaya_denda',
+            'stat',
+            'Aktif'
+        );
 
-			$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-warning">
-			<p> Hapus Harga Denda Sukses !</p>
-			</div></div>');
-			redirect(base_url('transaksi/denda'));
-		}
-	}
+        foreach ($dd as $isi) {
+
+            $data1 = array(
+                'stat' => 'Tidak Aktif'
+            );
+
+            $this->db->where(
+                'id_biaya_denda',
+                $isi['id_biaya_denda']
+            );
+
+            $this->db->update(
+                'tbl_biaya_denda',
+                $data1
+            );
+        }
+
+
+        // -----------------------------------------
+        // Ambil data POST
+        // -----------------------------------------
+        $post = $this->input->post();
+
+
+        // -----------------------------------------
+        // Data yang akan diupdate
+        // -----------------------------------------
+        $data = array(
+            'harga_denda'           => $post['harga'],
+            'jenis_denda'           => $post['jenis_denda'],
+            'maksimal_perhitungan' => $post['maksimal_perhitungan'],
+            'stat'                 => $post['status'],
+            'tgl_tetap'            => date('Y-m-d')
+        );
+
+
+        // -----------------------------------------
+        // Update berdasarkan ID
+        // -----------------------------------------
+        $this->db->where(
+            'id_biaya_denda',
+            $post['edit']
+        );
+
+        $this->db->update(
+            'tbl_biaya_denda',
+            $data
+        );
+
+
+        $this->session->set_flashdata(
+            'pesan',
+            '<div id="notifikasi">
+                <div class="alert alert-success">
+                    <p>Edit Harga Denda Sukses !</p>
+                </div>
+            </div>'
+        );
+
+        redirect(base_url('transaksi/denda'));
+    }
+
+
+    // =========================================================
+    // HAPUS HARGA DENDA
+    // =========================================================
+    if (!empty($this->input->get('denda_id'))) {
+
+        $id = $this->input->get('denda_id');
+
+
+        $this->db->where(
+            'id_biaya_denda',
+            $id
+        );
+
+        $this->db->delete(
+            'tbl_biaya_denda'
+        );
+
+
+        $this->session->set_flashdata(
+            'pesan',
+            '<div id="notifikasi">
+                <div class="alert alert-warning">
+                    <p>Hapus Harga Denda Sukses !</p>
+                </div>
+            </div>'
+        );
+
+        redirect(base_url('transaksi/denda'));
+    }
+}
 
 
 	public function result()
