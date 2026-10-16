@@ -156,4 +156,42 @@ class User extends CI_Controller
 		// die();
 		redirect(base_url('user'));
 	}
+
+
+	public function printqrcode()
+{
+    $this->data['title_web'] = 'Cetak QR Code Siswa';
+
+    $ids = $this->input->get('id');
+
+    if (empty($ids)) {
+        show_error('Pilih siswa terlebih dahulu untuk mencetak QR Code.', 400);
+        return;
+    }
+
+    $ids = explode(',', $ids);
+
+    $ids = array_values(array_unique(array_filter($ids, function ($id) {
+        return ctype_digit((string) $id) && (int) $id > 0;
+    })));
+
+    if (empty($ids)) {
+        show_error('ID siswa tidak valid.', 400);
+        return;
+    }
+
+    $this->db->where_in('id_siswa', $ids);
+    $this->db->order_by('kode_anggota', 'ASC');
+
+    // Sesuaikan nama tabel jika tabel siswa Anda berbeda.
+    $this->data['siswa'] = $this->db->get('tbl_siswa')->result_array();
+
+    if (empty($this->data['siswa'])) {
+        show_error('Data siswa tidak ditemukan.', 404);
+        return;
+    }
+
+    $this->load->view('user/print_qrcode', $this->data);
+}
+
 }

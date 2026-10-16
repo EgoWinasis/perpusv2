@@ -20,7 +20,7 @@ class Data extends CI_Controller
 	public function index()
 	{
 		$this->data['idbo'] = $this->session->userdata('ses_id');
-		$this->data['buku'] =  $this->db->query("SELECT * FROM tbl_buku ORDER BY kode_buku ");
+		$this->data['buku'] = $this->db->query("SELECT * FROM tbl_buku ORDER BY kode_buku ");
 		$this->data['title_web'] = 'Data Buku';
 		$this->load->view('header_view', $this->data);
 		$this->load->view('sidebar_view', $this->data);
@@ -30,7 +30,7 @@ class Data extends CI_Controller
 	public function jumlah()
 	{
 		$this->data['idbo'] = $this->session->userdata('ses_id');
-		$this->data['buku'] =  $this->db->query("SELECT * FROM tbl_buku GROUP BY title ORDER BY title ASC");
+		$this->data['buku'] = $this->db->query("SELECT * FROM tbl_buku GROUP BY title ORDER BY title ASC");
 		$this->data['title_web'] = 'Data Jumlah Buku';
 		$this->load->view('header_view', $this->data);
 		$this->load->view('sidebar_view', $this->data);
@@ -44,8 +44,8 @@ class Data extends CI_Controller
 		$count = $this->M_Admin->CountTableId('tbl_buku', 'id_buku', $this->uri->segment('3'));
 		if ($count > 0) {
 			$this->data['buku'] = $this->M_Admin->get_tableid_edit('tbl_buku', 'id_buku', $this->uri->segment('3'));
-			$this->data['kats'] =  $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
-			$this->data['rakbuku'] =  $this->db->query("SELECT * FROM tbl_rak ORDER BY id_rak DESC")->result_array();
+			$this->data['kats'] = $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
+			$this->data['rakbuku'] = $this->db->query("SELECT * FROM tbl_rak ORDER BY id_rak DESC")->result_array();
 		} else {
 			echo '<script>alert("BUKU TIDAK DITEMUKAN");window.location="' . base_url('data') . '"</script>';
 		}
@@ -65,8 +65,8 @@ class Data extends CI_Controller
 
 			$this->data['buku'] = $this->M_Admin->get_tableid_edit('tbl_buku', 'id_buku', $this->uri->segment('3'));
 
-			$this->data['kats'] =  $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
-			$this->data['rakbuku'] =  $this->db->query("SELECT * FROM tbl_rak ORDER BY id_rak DESC")->result_array();
+			$this->data['kats'] = $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
+			$this->data['rakbuku'] = $this->db->query("SELECT * FROM tbl_rak ORDER BY id_rak DESC")->result_array();
 		} else {
 			echo '<script>alert("BUKU TIDAK DITEMUKAN");window.location="' . base_url('data') . '"</script>';
 		}
@@ -82,8 +82,8 @@ class Data extends CI_Controller
 	{
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 
-		$this->data['kats'] =  $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
-		$this->data['rakbuku'] =  $this->db->query("SELECT * FROM tbl_rak ORDER BY id_rak DESC")->result_array();
+		$this->data['kats'] = $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
+		$this->data['rakbuku'] = $this->db->query("SELECT * FROM tbl_rak ORDER BY id_rak DESC")->result_array();
 
 
 		$this->data['title_web'] = 'Tambah Buku';
@@ -105,8 +105,8 @@ class Data extends CI_Controller
 		if (!empty($this->input->get('buku_id'))) {
 
 			$buku = $this->M_Admin->get_tableid_edit('tbl_buku', 'id_buku', htmlentities($this->input->get('buku_id')));
-			$bukuDel =  $this->db->query("SELECT * FROM `tbl_buku` WHERE `id_buku` = '" . $this->input->get('buku_id') . "'")->result_array();
-			$count =  $this->db->query("SELECT * FROM `tbl_pinjam` WHERE `kode` = '" . $bukuDel[0]['kode_buku'] . "'")->result_array();
+			$bukuDel = $this->db->query("SELECT * FROM `tbl_buku` WHERE `id_buku` = '" . $this->input->get('buku_id') . "'")->result_array();
+			$count = $this->db->query("SELECT * FROM `tbl_pinjam` WHERE `kode` = '" . $bukuDel[0]['kode_buku'] . "'")->result_array();
 
 			if ((count($count)) > 0) {
 
@@ -143,7 +143,7 @@ class Data extends CI_Controller
 				'id_kategori' => htmlentities($post['kategori']),
 				'id_rak' => htmlentities($post['rak']),
 				'isbn' => htmlentities($post['isbn']),
-				'title'  => htmlentities($post['title']),
+				'title' => htmlentities($post['title']),
 				'pengarang' => htmlentities($post['pengarang']),
 				'penerbit' => htmlentities($post['penerbit']),
 				'thn_buku' => htmlentities($post['thn']),
@@ -166,8 +166,8 @@ class Data extends CI_Controller
 		if (!empty($this->input->post('edit'))) {
 			$post = $this->input->post();
 
-			$bukuEdit =  $this->db->query("SELECT * FROM `tbl_buku` WHERE `id_buku` = '" . $this->input->post('edit') . "'")->result_array();
-			$count =  $this->db->query("SELECT * FROM `tbl_pinjam` WHERE `kode` = '" . $bukuEdit[0]['kode_buku'] . "'")->result_array();
+			$bukuEdit = $this->db->query("SELECT * FROM `tbl_buku` WHERE `id_buku` = '" . $this->input->post('edit') . "'")->result_array();
+			$count = $this->db->query("SELECT * FROM `tbl_pinjam` WHERE `kode` = '" . $bukuEdit[0]['kode_buku'] . "'")->result_array();
 
 
 			if ((count($count)) > 0) {
@@ -192,7 +192,7 @@ class Data extends CI_Controller
 						'id_kategori' => htmlentities($post['kategori']),
 						'id_rak' => htmlentities($post['rak']),
 						'isbn' => htmlentities($post['isbn']),
-						'title'  => htmlentities($post['title']),
+						'title' => htmlentities($post['title']),
 						'pengarang' => htmlentities($post['pengarang']),
 						'penerbit' => htmlentities($post['penerbit']),
 						'thn_buku' => htmlentities($post['thn']),
@@ -206,7 +206,7 @@ class Data extends CI_Controller
 						'id_kategori' => htmlentities($post['kategori']),
 						'id_rak' => htmlentities($post['rak']),
 						'isbn' => htmlentities($post['isbn']),
-						'title'  => htmlentities($post['title']),
+						'title' => htmlentities($post['title']),
 						'pengarang' => htmlentities($post['pengarang']),
 						'penerbit' => htmlentities($post['penerbit']),
 						'thn_buku' => htmlentities($post['thn']),
@@ -233,7 +233,7 @@ class Data extends CI_Controller
 	{
 
 		$this->data['idbo'] = $this->session->userdata('ses_id');
-		$this->data['kategori'] =  $this->db->query("SELECT * FROM tbl_kategori ORDER BY kode_kategori DESC");
+		$this->data['kategori'] = $this->db->query("SELECT * FROM tbl_kategori ORDER BY kode_kategori DESC");
 
 		if (!empty($this->input->get('id'))) {
 			$id = $this->input->get('id');
@@ -332,7 +332,7 @@ class Data extends CI_Controller
 	{
 
 		$this->data['idbo'] = $this->session->userdata('ses_id');
-		$this->data['rakbuku'] =  $this->db->query("SELECT * FROM tbl_rak ORDER BY id_rak DESC");
+		$this->data['rakbuku'] = $this->db->query("SELECT * FROM tbl_rak ORDER BY id_rak DESC");
 
 		if (!empty($this->input->get('id'))) {
 			$id = $this->input->get('id');
@@ -415,7 +415,7 @@ class Data extends CI_Controller
 	public function bukudigital()
 	{
 		$this->data['idbo'] = $this->session->userdata('ses_id');
-		$this->data['buku'] =  $this->db->query("SELECT * FROM tbl_buku_digital ORDER BY kode_buku");
+		$this->data['buku'] = $this->db->query("SELECT * FROM tbl_buku_digital ORDER BY kode_buku");
 		$this->data['title_web'] = 'Data Buku Digital';
 		$this->load->view('header_view', $this->data);
 		$this->load->view('sidebar_view', $this->data);
@@ -427,7 +427,7 @@ class Data extends CI_Controller
 	{
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 
-		$this->data['kats'] =  $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
+		$this->data['kats'] = $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
 
 
 		$this->data['title_web'] = 'Tambah Buku';
@@ -482,7 +482,7 @@ class Data extends CI_Controller
 				'kode_buku' => $buku_id,
 				'id_kategori' => htmlentities($post['kategori']),
 				'isbn' => htmlentities($post['isbn']),
-				'title'  => htmlentities($post['title']),
+				'title' => htmlentities($post['title']),
 				'pengarang' => htmlentities($post['pengarang']),
 				'penerbit' => htmlentities($post['penerbit']),
 				'thn_buku' => htmlentities($post['thn']),
@@ -509,7 +509,7 @@ class Data extends CI_Controller
 					$file2 = array('upload_data' => $this->upload->data());
 					$pdf = new Spatie\PdfToImage\Pdf($_SERVER['DOCUMENT_ROOT'] . '/assets_style/image/buku/lampiran/' . $nameFolder . '/' . $file2['upload_data']['file_name']);
 					$totalPage = $pdf->getNumberOfPages(); //returns an int
-					for ($i = 1; $i <=  $totalPage; $i++) {
+					for ($i = 1; $i <= $totalPage; $i++) {
 						$pdf->setOutputFormat('png')
 							->setPage($i)
 							->saveImage($config['upload_path']);
@@ -549,7 +549,7 @@ class Data extends CI_Controller
 		if (!empty($this->input->post('edit'))) {
 			$post = $this->input->post();
 
-			$bukuEdit =  $this->db->query("SELECT * FROM `tbl_buku_digital` WHERE `id_buku` = '" . $this->input->post('edit') . "'")->result_array();
+			$bukuEdit = $this->db->query("SELECT * FROM `tbl_buku_digital` WHERE `id_buku` = '" . $this->input->post('edit') . "'")->result_array();
 
 			if (($post['kategori'] != $post['id_kategori_old'])) {
 				$id_kategori = $post['kategori'];
@@ -563,7 +563,7 @@ class Data extends CI_Controller
 					'kode_buku' => $buku_id,
 					'id_kategori' => htmlentities($post['kategori']),
 					'isbn' => htmlentities($post['isbn']),
-					'title'  => htmlentities($post['title']),
+					'title' => htmlentities($post['title']),
 					'pengarang' => htmlentities($post['pengarang']),
 					'penerbit' => htmlentities($post['penerbit']),
 					'thn_buku' => htmlentities($post['thn']),
@@ -574,7 +574,7 @@ class Data extends CI_Controller
 				$data = array(
 					'id_kategori' => htmlentities($post['kategori']),
 					'isbn' => htmlentities($post['isbn']),
-					'title'  => htmlentities($post['title']),
+					'title' => htmlentities($post['title']),
 					'pengarang' => htmlentities($post['pengarang']),
 					'penerbit' => htmlentities($post['penerbit']),
 					'thn_buku' => htmlentities($post['thn']),
@@ -604,11 +604,11 @@ class Data extends CI_Controller
 					}
 
 					$file2 = array('upload_data' => $this->upload->data());
-					
+
 					$pdf = new Spatie\PdfToImage\Pdf($_SERVER['DOCUMENT_ROOT'] . '/assets_style/image/buku/lampiran/' . $nameFolder . '/' . $file2['upload_data']['file_name']);
 					$totalPage = $pdf->getNumberOfPages(); //returns an int
-				
-					for ($i = 1; $i <=  $totalPage; $i++) {
+
+					for ($i = 1; $i <= $totalPage; $i++) {
 						$pdf->setOutputFormat('png')
 							->setPage($i)
 							->saveImage($config['upload_path']);
@@ -648,7 +648,7 @@ class Data extends CI_Controller
 		$count = $this->M_Admin->CountTableId('tbl_buku_digital', 'id_buku', $this->uri->segment('3'));
 		if ($count > 0) {
 			$this->data['buku'] = $this->M_Admin->get_tableid_edit('tbl_buku_digital', 'id_buku', $this->uri->segment('3'));
-			$this->data['kats'] =  $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
+			$this->data['kats'] = $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
 		} else {
 			echo '<script>alert("BUKU TIDAK DITEMUKAN");window.location="' . base_url('data/bukudigital') . '"</script>';
 		}
@@ -668,7 +668,7 @@ class Data extends CI_Controller
 
 			$this->data['buku'] = $this->M_Admin->get_tableid_edit('tbl_buku_digital', 'id_buku', $this->uri->segment('3'));
 
-			$this->data['kats'] =  $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
+			$this->data['kats'] = $this->db->query("SELECT * FROM tbl_kategori ORDER BY id_kategori DESC")->result_array();
 		} else {
 			echo '<script>alert("BUKU TIDAK DITEMUKAN");window.location="' . base_url('data/bukudigital') . '"</script>';
 		}
@@ -684,8 +684,8 @@ class Data extends CI_Controller
 	{
 		$id = $this->uri->segment('3');
 
-		$this->data['buku'] =  $this->db->query("SELECT * FROM tbl_buku_digital WHERE id_buku = ".$id )->result_array();
-		
+		$this->data['buku'] = $this->db->query("SELECT * FROM tbl_buku_digital WHERE id_buku = " . $id)->result_array();
+
 		$this->load->view('buku/read_view', $this->data);
 	}
 
@@ -733,4 +733,47 @@ class Data extends CI_Controller
 		$this->db->set('total_hal', count($images));
 		$this->db->set('lampiran', $newFolder);
 	}
+
+	public function printqrcode()
+	{
+		$this->data['title_web'] = 'Cetak QR Code Buku';
+
+		$ids = $this->input->get('id');
+
+		if (empty($ids)) {
+			show_error(
+				'ID buku tidak diterima. Silakan pilih buku dari halaman Data Buku.',
+				400
+			);
+			return;
+		}
+
+		// Ubah daftar ID menjadi array
+		$ids = explode(',', $ids);
+
+		// Validasi ID buku
+		$ids = array_values(array_unique(array_filter($ids, function ($id) {
+			return ctype_digit((string) $id) && (int) $id > 0;
+		})));
+
+		if (empty($ids)) {
+			show_error('ID buku tidak valid.', 400);
+			return;
+		}
+
+		// Ambil buku berdasarkan ID yang dipilih
+		$this->db->where_in('id_buku', $ids);
+		$this->db->order_by('kode_buku', 'ASC');
+
+		$this->data['buku'] = $this->db->get('tbl_buku')->result_array();
+
+		if (empty($this->data['buku'])) {
+			show_error('Data buku tidak ditemukan.', 404);
+			return;
+		}
+
+		$this->load->view('buku/print_qrcode', $this->data);
+	}
+
+
 }
