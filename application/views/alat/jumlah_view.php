@@ -1,16 +1,9 @@
 <?php if (!defined('BASEPATH')) exit('No direct script acess allowed'); ?>
 <?php
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "perpus_db";
+$CI =& get_instance();
+$CI->load->database();
 
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+$conn = $CI->db->conn_id;
 
 
 function getJumlahAlat($conn, $nama)
