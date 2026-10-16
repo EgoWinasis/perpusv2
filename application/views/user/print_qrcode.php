@@ -162,9 +162,6 @@
                     <?= html_escape($item['kode_anggota']); ?>
                 </div>
 
-                <div class="nama">
-                    <?= html_escape($item['nama']); ?>
-                </div>
 
             </div>
         <?php } ?>
