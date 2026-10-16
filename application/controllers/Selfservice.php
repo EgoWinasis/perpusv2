@@ -1,5 +1,5 @@
 <?php
-defined('BASEPATH') or exit('No direct script access allowed');
+defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Selfservice extends CI_Controller
 {
@@ -8,18 +8,14 @@ class Selfservice extends CI_Controller
         parent::__construct();
 
         $this->load->database();
-        $this->load->helper(array('url', 'security'));
-        $this->load->library('session');
-
-        // Validasi login
-        if ($this->session->userdata('masuk_perpus') != TRUE) {
-            redirect('login');
-        }
+        $this->load->model('M_Admin');
+        $this->load->helper(array('url', 'form'));
+        $this->load->library('form_validation');
     }
 
     /**
-     * Halaman utama Self Service.
-     * Tidak menggunakan header/sidebar admin.
+     * HALAMAN UTAMA SELF SERVICE
+     * Tidak memerlukan login.
      */
     public function index()
     {
@@ -29,188 +25,169 @@ class Selfservice extends CI_Controller
     }
 
     /**
-     * Mengirim respons JSON.
+     * OUTPUT JSON
      */
-    private function json($data, $httpCode = 200)
+    private function json_response($data, $http_code = 200)
     {
         return $this->output
-            ->set_status_header($httpCode)
+            ->set_status_header($http_code)
             ->set_content_type('application/json', 'utf-8')
-            ->set_output(json_encode($data));
+            ->set_output(json_encode(
+                $data,
+                JSON_UNESCAPED_UNICODE
+            ));
     }
 
     /**
-     * Mengambil ID anggota dari request.
-     */
-    private function inputAnggota()
-    {
-        return trim((string) $this->input->post('id_anggota', TRUE));
-    }
-
-    /**
-     * Mencari anggota.
+     * CEK ANGGOTA
      *
-     * Mendukung ID siswa maupun kode anggota.
-     */
-    private function cariAnggota($id)
-    {
-        if ($id === '') {
-            return NULL;
-        }
-
-        return $this->db
-            ->group_start()
-                ->where('kode_anggota', $id)
-                ->or_where('id_siswa', $id)
-            ->group_end()
-            ->limit(1)
-            ->get('tbl_siswa')
-            ->row();
-    }
-
-    /**
-     * Mencari buku berdasarkan kode buku.
-     */
-    private function cariBuku($kode)
-    {
-        if ($kode === '') {
-            return NULL;
-        }
-
-        return $this->db
-            ->group_start()
-                ->where('kode_buku', $kode)
-                ->or_where('buku_id', $kode)
-                ->or_where('isbn', $kode)
-            ->group_end()
-            ->limit(1)
-            ->get('tbl_buku')
-            ->row();
-    }
-
-    /**
-     * Mengirimkan informasi anggota.
-     * POST: id_anggota
+     * Input POST:
+     * id_anggota = kode_anggota
      */
     public function cek_anggota()
     {
-        $id = $this->inputAnggota();
-        $anggota = $this->cariAnggota($id);
+        $id = trim((string) $this->input->post('id_anggota'));
+
+        if ($id === '') {
+            return $this->json_response(array(
+                'status'  => false,
+                'message' => 'ID anggota wajib diisi.'
+            ));
+        }
+
+        $anggota = $this->db
+            ->where('kode_anggota', $id)
+            ->get('tbl_siswa')
+            ->row();
 
         if (!$anggota) {
-            return $this->json(array(
-                'status' => false,
+            return $this->json_response(array(
+                'status'  => false,
                 'message' => 'Anggota tidak ditemukan.'
             ));
         }
 
-        return $this->json(array(
-            'status' => true,
-            'id_anggota' => $anggota->id_siswa,
-            'kode_anggota' => $anggota->kode_anggota,
-            'nama' => $anggota->nama
+        return $this->json_response(array(
+            'status'       => true,
+            'message'      => 'Anggota ditemukan.',
+            'id_anggota'   => $anggota->kode_anggota,
+            'nama'         => $anggota->nama,
+            'kode_anggota' => $anggota->kode_anggota
         ));
     }
 
     /**
-     * Memeriksa buku dan menentukan tindakan.
+     * CEK BUKU
      *
-     * POST:
+     * Input POST:
      * id_anggota
      * kode_buku
      *
-     * aksi = kembali jika buku sedang dipinjam
-     * aksi = pinjam jika buku tersedia
+     * Mengembalikan aksi:
+     * pinjam  = buku tersedia
+     * kembali = buku dipinjam anggota tersebut
      */
     public function cek_buku()
     {
-        $id = $this->inputAnggota();
-        $kode = trim((string) $this->input->post('kode_buku', TRUE));
+        $id_anggota = trim(
+            (string) $this->input->post('id_anggota')
+        );
 
-        if ($id === '' || $kode === '') {
-            return $this->json(array(
-                'status' => false,
+        $kode_buku = trim(
+            (string) $this->input->post('kode_buku')
+        );
+
+        if ($id_anggota === '' || $kode_buku === '') {
+            return $this->json_response(array(
+                'status'  => false,
                 'message' => 'ID anggota dan kode buku wajib diisi.'
             ));
         }
 
-        $anggota = $this->cariAnggota($id);
+        // Validasi anggota.
+        $anggota = $this->db
+            ->where('kode_anggota', $id_anggota)
+            ->get('tbl_siswa')
+            ->row();
 
         if (!$anggota) {
-            return $this->json(array(
-                'status' => false,
+            return $this->json_response(array(
+                'status'  => false,
                 'message' => 'Anggota tidak ditemukan.'
             ));
         }
 
-        $buku = $this->cariBuku($kode);
+        // Cari buku menggunakan kode_buku.
+        $buku = $this->db
+            ->where('kode_buku', $kode_buku)
+            ->get('tbl_buku')
+            ->row();
 
         if (!$buku) {
-            return $this->json(array(
-                'status' => false,
-                'message' => 'Buku tidak ditemukan.'
+            return $this->json_response(array(
+                'status'  => false,
+                'message' => 'Kode buku tidak ditemukan.'
             ));
         }
 
-        // Cari transaksi buku yang masih aktif.
-        $pinjaman = $this->db
-            ->where('kode', $buku->kode_buku)
+        // Cek apakah buku dipinjam anggota yang sama.
+        $pinjaman_anggota = $this->db
+            ->where('kode', $kode_buku)
+            ->where('anggota_id', $id_anggota)
             ->where('status', 'Dipinjam')
-            ->order_by('id_pinjam', 'DESC')
-            ->limit(1)
             ->get('tbl_pinjam')
             ->row();
 
-        if ($pinjaman) {
-            // Buku sedang dipinjam anggota lain.
-            if ((string) $pinjaman->anggota_id !==
-                (string) $anggota->id_siswa) {
-
-                return $this->json(array(
-                    'status' => false,
-                    'message' => 'Buku sedang dipinjam anggota lain.'
-                ));
-            }
-
-            // Buku dipinjam anggota yang sedang diperiksa.
-            return $this->json(array(
-                'status' => true,
-                'aksi' => 'kembali',
-                'judul' => $buku->title,
-                'kode_buku' => $buku->kode_buku,
-                'message' => 'Buku dapat dikembalikan.'
+        if ($pinjaman_anggota) {
+            return $this->json_response(array(
+                'status'  => true,
+                'message' => 'Buku sedang dipinjam oleh anggota ini.',
+                'judul'   => $buku->title,
+                'title'   => $buku->title,
+                'kode'    => $buku->kode_buku,
+                'aksi'    => 'kembali'
             ));
         }
 
-        // Buku tidak memiliki transaksi aktif.
-        return $this->json(array(
-            'status' => true,
-            'aksi' => 'pinjam',
-            'judul' => $buku->title,
-            'kode_buku' => $buku->kode_buku,
-            'message' => 'Buku tersedia untuk dipinjam.'
+        // Cek apakah buku dipinjam anggota lain.
+        $pinjaman_lain = $this->db
+            ->where('kode', $kode_buku)
+            ->where('status', 'Dipinjam')
+            ->get('tbl_pinjam')
+            ->num_rows();
+
+        if ($pinjaman_lain > 0) {
+            return $this->json_response(array(
+                'status'  => false,
+                'message' => 'Buku sedang dipinjam anggota lain.'
+            ));
+        }
+
+        return $this->json_response(array(
+            'status'  => true,
+            'message' => 'Buku tersedia dan dapat dipinjam.',
+            'judul'   => $buku->title,
+            'title'   => $buku->title,
+            'kode'    => $buku->kode_buku,
+            'aksi'    => 'pinjam'
         ));
     }
 
     /**
-     * Menampilkan daftar buku yang sedang dipinjam anggota.
+     * DAFTAR BUKU YANG SEDANG DIPINJAM ANGGOTA
      *
-     * POST: id_anggota
+     * Input POST:
+     * id_anggota
      */
     public function pinjaman()
     {
-        $id = $this->inputAnggota();
-        $anggota = $this->cariAnggota($id);
+        /*
+         * Jika id_anggota dikirim, tampilkan pinjaman aktif anggota tersebut.
+         * Jika kosong, tampilkan seluruh pinjaman aktif dari semua anggota.
+         */
+        $id = trim((string) $this->input->post('id_anggota'));
 
-        if (!$anggota) {
-            return $this->json(array(
-                'status' => false,
-                'message' => 'Anggota tidak ditemukan.',
-                'data' => array()
-            ));
-        }
-
-        $rows = $this->db
+        $query = $this->db
             ->select(
                 'p.id_pinjam,
                  p.pinjam_id,
@@ -219,228 +196,319 @@ class Selfservice extends CI_Controller
                  p.status,
                  p.tgl_pinjam,
                  p.tgl_balik,
-                 b.title AS judul'
+                 b.title,
+                 s.nama AS nama_anggota'
             )
             ->from('tbl_pinjam p')
-            ->join(
-                'tbl_buku b',
-                'b.kode_buku = p.kode',
-                'left'
-            )
-            ->where('p.anggota_id', $anggota->id_siswa)
-            ->where('p.status', 'Dipinjam')
+            ->join('tbl_buku b', 'b.kode_buku = p.kode', 'left')
+            ->join('tbl_siswa s', 's.kode_anggota = p.anggota_id', 'left')
+            ->where('p.status', 'Dipinjam');
+
+        // Filter hanya jika halaman meminta pinjaman anggota tertentu.
+        if ($id !== '') {
+            $anggota = $this->db
+                ->where('kode_anggota', $id)
+                ->get('tbl_siswa')
+                ->row();
+
+            if (!$anggota) {
+                return $this->json_response(array(
+                    'status'  => false,
+                    'message' => 'Anggota tidak ditemukan.',
+                    'data'    => array()
+                ));
+            }
+
+            $query->where('p.anggota_id', $id);
+        }
+
+        $rows = $query
             ->order_by('p.id_pinjam', 'DESC')
             ->get()
             ->result();
 
         $data = array();
+        $today = strtotime(date('Y-m-d'));
 
         foreach ($rows as $row) {
+            $deadline = strtotime((string) $row->tgl_balik);
             $terlambat = (
-                !empty($row->tgl_balik) &&
-                $row->tgl_balik !== '0000-00-00' &&
-                $row->tgl_balik < date('Y-m-d')
+                $deadline !== false &&
+                $today > $deadline
             );
 
             $data[] = array(
-                'id_pinjam' => $row->id_pinjam,
-                'pinjam_id' => $row->pinjam_id,
-                'judul' => $row->judul ?: '-',
-                'title' => $row->judul ?: '-',
-                'kode' => $row->kode,
-                'kode_buku' => $row->kode,
-                'status' => $row->status,
-                'status_kembali' => $terlambat
-                    ? 'Terlambat'
-                    : 'Dipinjam',
-                'tgl_pinjam' => $row->tgl_pinjam,
-                'tgl_balik' => $row->tgl_balik,
-                'terlambat' => $terlambat
+                'id_pinjam'      => $row->id_pinjam,
+                'pinjam_id'      => $row->pinjam_id,
+                'anggota_id'     => $row->anggota_id,
+                'id_anggota'     => $row->anggota_id,
+                'nama_anggota'   => $row->nama_anggota ?: '-',
+                'nama'           => $row->nama_anggota ?: '-',
+                'kode'           => $row->kode,
+                'kode_buku'      => $row->kode,
+                'judul'          => $row->title,
+                'title'          => $row->title,
+                'tgl_pinjam'     => $row->tgl_pinjam,
+                'tgl_balik'      => $row->tgl_balik,
+                'status'         => 'Dipinjam',
+                'status_kembali' => $terlambat ? 'Terlambat' : 'Dipinjam',
+                'terlambat'      => $terlambat
             );
         }
 
-        return $this->json(array(
-            'status' => true,
-            'nama' => $anggota->nama,
-            'data' => $data
+        return $this->json_response(array(
+            'status'  => true,
+            'message' => $id !== ''
+                ? 'Data pinjaman aktif anggota berhasil dimuat.'
+                : 'Seluruh data pinjaman aktif berhasil dimuat.',
+            'data'    => $data
         ));
     }
 
     /**
-     * Proses peminjaman atau pengembalian buku.
+     * PROSES PEMINJAMAN DAN PENGEMBALIAN
      *
-     * POST:
+     * Input POST:
      * id_anggota
      * kode_buku
      * aksi = pinjam / kembali
      */
     public function proses()
     {
-        $id = $this->inputAnggota();
-        $kode = trim((string) $this->input->post('kode_buku', TRUE));
-        $aksi = trim((string) $this->input->post('aksi', TRUE));
+        $id_anggota = trim(
+            (string) $this->input->post('id_anggota')
+        );
 
-        if ($id === '' || $kode === '') {
-            return $this->json(array(
-                'status' => false,
-                'message' => 'ID anggota dan kode buku wajib diisi.'
+        $kode_buku = trim(
+            (string) $this->input->post('kode_buku')
+        );
+
+        $aksi = trim(
+            (string) $this->input->post('aksi')
+        );
+
+        if (
+            $id_anggota === '' ||
+            $kode_buku === '' ||
+            !in_array($aksi, array('pinjam', 'kembali'), true)
+        ) {
+            return $this->json_response(array(
+                'status'  => false,
+                'message' => 'Data transaksi tidak lengkap atau tidak valid.'
             ));
         }
 
-        if (!in_array($aksi, array('pinjam', 'kembali'), TRUE)) {
-            return $this->json(array(
-                'status' => false,
-                'message' => 'Tindakan transaksi tidak valid.'
-            ));
-        }
-
-        $anggota = $this->cariAnggota($id);
+        $anggota = $this->db
+            ->where('kode_anggota', $id_anggota)
+            ->get('tbl_siswa')
+            ->row();
 
         if (!$anggota) {
-            return $this->json(array(
-                'status' => false,
+            return $this->json_response(array(
+                'status'  => false,
                 'message' => 'Anggota tidak ditemukan.'
             ));
         }
 
-        $buku = $this->cariBuku($kode);
+        $buku = $this->db
+            ->where('kode_buku', $kode_buku)
+            ->get('tbl_buku')
+            ->row();
 
         if (!$buku) {
-            return $this->json(array(
-                'status' => false,
+            return $this->json_response(array(
+                'status'  => false,
                 'message' => 'Buku tidak ditemukan.'
             ));
         }
 
-        $this->db->trans_begin();
+        /*
+         * PEMINJAMAN
+         */
+        if ($aksi === 'pinjam') {
+            $sedang_dipinjam = $this->db
+                ->where('kode', $kode_buku)
+                ->where('status', 'Dipinjam')
+                ->count_all_results('tbl_pinjam');
 
-        // Kunci transaksi aktif buku untuk mengurangi
-        // kemungkinan peminjaman bersamaan.
+            if ($sedang_dipinjam > 0) {
+                return $this->json_response(array(
+                    'status'  => false,
+                    'message' => 'Buku sedang dipinjam dan belum tersedia.'
+                ));
+            }
+
+            // Lama pinjam default 7 hari.
+            $lama_pinjam = 7;
+            $tgl_pinjam = date('Y-m-d');
+            $tgl_balik = date(
+                'Y-m-d',
+                strtotime('+' . $lama_pinjam . ' days', strtotime($tgl_pinjam))
+            );
+
+            // Buat nomor transaksi.
+            $pinjam_id = $this->M_Admin->buat_kode_pinjam(
+                'tbl_pinjam',
+                'PJ',
+                'id_pinjam',
+                'ORDER BY id_pinjam DESC LIMIT 1'
+            );
+
+            $data_pinjam = array(
+                'pinjam_id'   => $pinjam_id,
+                'anggota_id'  => $id_anggota,
+                'kode'        => $kode_buku,
+                'status'      => 'Dipinjam',
+                'tgl_pinjam'  => $tgl_pinjam,
+                'lama_pinjam' => $lama_pinjam,
+                'tgl_balik'   => $tgl_balik,
+                'tgl_kembali' => '0000-00-00'
+            );
+
+            $insert = $this->db->insert(
+                'tbl_pinjam',
+                $data_pinjam
+            );
+
+            if (!$insert) {
+                return $this->json_response(array(
+                    'status'  => false,
+                    'message' => 'Gagal menyimpan transaksi peminjaman.'
+                ));
+            }
+
+            return $this->json_response(array(
+                'status'  => true,
+                'aksi'    => 'pinjam',
+                'message' => 'Buku "' . $buku->title . '" berhasil dipinjam. Batas pengembalian: ' . $tgl_balik . '.'
+            ));
+        }
+
+        /*
+         * PENGEMBALIAN
+         */
         $pinjaman = $this->db
-            ->where('kode', $buku->kode_buku)
+            ->where('kode', $kode_buku)
+            ->where('anggota_id', $id_anggota)
             ->where('status', 'Dipinjam')
             ->order_by('id_pinjam', 'DESC')
-            ->limit(1)
             ->get('tbl_pinjam')
             ->row();
 
-        if ($aksi === 'pinjam') {
-            if ($pinjaman) {
-                $this->db->trans_rollback();
-
-                return $this->json(array(
-                    'status' => false,
-                    'message' => 'Buku sedang dipinjam.'
-                ));
-            }
-
-            $tanggal = date('Y-m-d');
-            $lamaPinjam = 7;
-            $tanggalKembali = date(
-                'Y-m-d',
-                strtotime('+' . $lamaPinjam . ' days', strtotime($tanggal))
-            );
-
-            $data = array(
-                'pinjam_id' => $this->buatKodePinjam(),
-                'anggota_id' => $anggota->id_siswa,
-                'kode' => $buku->kode_buku,
-                'status' => 'Dipinjam',
-                'tgl_pinjam' => $tanggal,
-                'lama_pinjam' => $lamaPinjam,
-                'tgl_balik' => $tanggalKembali,
-                'tgl_kembali' => '0'
-            );
-
-            $berhasil = $this->db->insert('tbl_pinjam', $data);
-
-            $pesan = 'Buku ' . $buku->title .
-                ' berhasil dipinjam. Batas pengembalian: ' .
-                $tanggalKembali . '.';
-        } else {
-            if (!$pinjaman) {
-                $this->db->trans_rollback();
-
-                return $this->json(array(
-                    'status' => false,
-                    'message' => 'Buku tidak sedang dipinjam.'
-                ));
-            }
-
-            if ((string) $pinjaman->anggota_id !==
-                (string) $anggota->id_siswa) {
-
-                $this->db->trans_rollback();
-
-                return $this->json(array(
-                    'status' => false,
-                    'message' => 'Buku ini dipinjam anggota lain.'
-                ));
-            }
-
-            $berhasil = $this->db
-                ->where('id_pinjam', $pinjaman->id_pinjam)
-                ->where('status', 'Dipinjam')
-                ->update('tbl_pinjam', array(
-                    'status' => 'Di Kembalikan',
-                    'tgl_kembali' => date('Y-m-d')
-                ));
-
-            $pesan = 'Buku ' . $buku->title .
-                ' berhasil dikembalikan.';
+        if (!$pinjaman) {
+            return $this->json_response(array(
+                'status'  => false,
+                'message' => 'Buku ini tidak tercatat sebagai pinjaman aktif anggota.'
+            ));
         }
 
-        if (!$berhasil || $this->db->trans_status() === FALSE) {
+        $tgl_kembali = date('Y-m-d');
+
+        $this->db->trans_begin();
+
+        // Perbarui transaksi pinjam.
+        $this->db
+            ->where('id_pinjam', $pinjaman->id_pinjam)
+            ->update('tbl_pinjam', array(
+                'status'      => 'Di Kembalikan',
+                'tgl_kembali' => $tgl_kembali
+            ));
+
+        // Hitung denda berdasarkan tanggal keterlambatan.
+        $jatuh_tempo = strtotime($pinjaman->tgl_balik);
+        $tanggal_kembali = strtotime($tgl_kembali);
+
+        $hari_terlambat = 0;
+
+        if (
+            $jatuh_tempo !== false &&
+            $tanggal_kembali !== false &&
+            $tanggal_kembali > $jatuh_tempo
+        ) {
+            $hari_terlambat = (int) floor(
+                ($tanggal_kembali - $jatuh_tempo) / 86400
+            );
+        }
+
+        $harga_denda = 0;
+
+        if ($hari_terlambat > 0) {
+            $aturan_denda = $this->db
+                ->where('stat', 'Aktif')
+                ->order_by('id_biaya_denda', 'DESC')
+                ->get('tbl_biaya_denda')
+                ->row();
+
+            if ($aturan_denda) {
+                $harga_per_hari = (float) $aturan_denda->harga_denda;
+
+                $maksimal = isset($aturan_denda->maksimal_perhitungan)
+                    ? (int) $aturan_denda->maksimal_perhitungan
+                    : 0;
+
+                $hari_dihitung = $hari_terlambat;
+
+                if ($maksimal > 0) {
+                    $hari_dihitung = min(
+                        $hari_terlambat,
+                        $maksimal
+                    );
+                }
+
+                // Berlaku jika jenis denda dihitung per hari.
+                $jenis = isset($aturan_denda->jenis_denda)
+                    ? strtolower(trim($aturan_denda->jenis_denda))
+                    : '';
+
+                if (
+                    strpos($jenis, 'hari') !== false ||
+                    strpos($jenis, 'terlambat') !== false ||
+                    $jenis === ''
+                ) {
+                    $harga_denda = $harga_per_hari * $hari_dihitung;
+                } else {
+                    // Untuk jenis denda lain, jangan mengarang
+                    // aturan perhitungannya.
+                    $harga_denda = 0;
+                }
+            }
+        }
+
+        // Simpan catatan denda jika tabel tersedia.
+        $data_denda = array(
+            'pinjam_id'  => $pinjaman->pinjam_id,
+            'denda'      => $harga_denda,
+            'lama_waktu' => $hari_terlambat,
+            'tgl_denda'  => $tgl_kembali
+        );
+
+        $this->db->insert('tbl_denda', $data_denda);
+
+        if ($this->db->trans_status() === false) {
             $this->db->trans_rollback();
 
-            return $this->json(array(
-                'status' => false,
-                'message' => 'Transaksi gagal disimpan.'
+            return $this->json_response(array(
+                'status'  => false,
+                'message' => 'Gagal memproses pengembalian buku.'
             ));
         }
 
         $this->db->trans_commit();
 
-        return $this->json(array(
-            'status' => true,
-            'aksi' => $aksi,
-            'judul' => $buku->title,
-            'message' => $pesan
+        $pesan = 'Buku "' . $buku->title . '" berhasil dikembalikan.';
+
+        if ($hari_terlambat > 0) {
+            $pesan .= ' Terlambat ' . $hari_terlambat . ' hari. Denda: Rp ' .
+                number_format($harga_denda, 0, ',', '.') . '.';
+        }
+
+        return $this->json_response(array(
+            'status'        => true,
+            'aksi'          => 'kembali',
+            'message'       => $pesan,
+            'hari_terlambat'=> $hari_terlambat,
+            'denda'         => $harga_denda
         ));
     }
 
-    /**
-     * Membuat nomor transaksi pinjam.
-     */
-    private function buatKodePinjam()
-    {
-        $this->db
-            ->select('pinjam_id')
-            ->from('tbl_pinjam')
-            ->like('pinjam_id', 'PJ', 'after')
-            ->order_by('id_pinjam', 'DESC')
-            ->limit(1);
-
-        $row = $this->db->get()->row();
-
-        $nomor = 1;
-
-        if ($row && preg_match('/^PJ(\d+)$/', $row->pinjam_id, $match)) {
-            $nomor = ((int) $match[1]) + 1;
-        }
-
-        do {
-            $kode = 'PJ' . str_pad($nomor, 6, '0', STR_PAD_LEFT);
-
-            $ada = $this->db
-                ->where('pinjam_id', $kode)
-                ->count_all_results('tbl_pinjam') > 0;
-
-            if ($ada) {
-                $nomor++;
-            }
-        } while ($ada);
-
-        return $kode;
-    }
 }
