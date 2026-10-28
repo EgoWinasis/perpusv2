@@ -1,4 +1,5 @@
-<?php if (!defined('BASEPATH')) exit('No direct script acess allowed'); ?>
+<?php if (!defined('BASEPATH'))
+    exit('No direct script acess allowed'); ?>
 
 <div class="content-wrapper">
     <section class="content-header">
@@ -44,6 +45,11 @@
                             <i class="fa fa-print"></i> Kartu
                         </button>
 
+                        <!-- Tombol Cetak Kartu Full -->
+                        <button id="print_full_card_button" class="btn btn-success" type="button">
+                            <i class="fa fa-id-card"></i> Cetak Kartu Full
+                        </button>
+
                         <!-- Tombol Cetak QR Code -->
                         <button id="print_qrcode_button" class="btn btn-info">
                             <i class="fa fa-qrcode"></i> Cetak QR Code
@@ -63,9 +69,7 @@
 
                         <div class="table-responsive">
 
-                            <table id="example1"
-                                   class="table table-bordered table-striped"
-                                   width="100%">
+                            <table id="example1" class="table table-bordered table-striped" width="100%">
 
                                 <thead>
                                     <tr>
@@ -76,10 +80,7 @@
 
                                         <th style="width:150px;">
                                             Cetak Kartu
-                                            <input
-                                                class="form-check-input"
-                                                type="checkbox"
-                                                id="checkAll">
+                                            <input class="form-check-input" type="checkbox" id="checkAll">
                                         </th>
 
                                         <th>Aksi</th>
@@ -90,7 +91,7 @@
                                     <?php
                                     $no = 1;
                                     foreach ($user as $isi) {
-                                    ?>
+                                        ?>
                                         <tr>
                                             <td><?= $no; ?></td>
 
@@ -108,9 +109,7 @@
 
                                             <td class="text-center">
                                                 <div class="form-check">
-                                                    <input
-                                                        class="form-check-input check"
-                                                        type="checkbox"
+                                                    <input class="form-check-input check" type="checkbox"
                                                         value="<?= $isi['id_siswa']; ?>">
                                                 </div>
                                             </td>
@@ -122,8 +121,7 @@
                                                     </button>
                                                 </a>
 
-                                                <a
-                                                    href="<?= base_url('user/del/' . $isi['id_siswa']); ?>"
+                                                <a href="<?= base_url('user/del/' . $isi['id_siswa']); ?>"
                                                     onclick="return confirm('Anda yakin user akan dihapus ?');">
 
                                                     <button class="btn btn-danger">
@@ -133,7 +131,7 @@
                                             </td>
                                         </tr>
 
-                                    <?php
+                                        <?php
                                         $no++;
                                     }
                                     ?>
@@ -150,54 +148,71 @@
 </div>
 
 <script>
-$(function() {
+    $(function () {
 
-    // Cetak kartu siswa (kode lama)
-    $('#print_button').click(function() {
-        var val = [];
+        // Cetak kartu siswa (kode lama)
+        $('#print_button').click(function () {
+            var val = [];
 
-        $('.check:checkbox:checked').each(function() {
-            val.push($(this).val());
+            $('.check:checkbox:checked').each(function () {
+                val.push($(this).val());
+            });
+
+            if (val.length > 0) {
+                document.cookie = 'data=' + val.join(',') + '; path=/';
+                window.open('<?= base_url('user/print/'); ?>', '_blank');
+            } else {
+                alert('Pilih Siswa terlebih dahulu');
+            }
         });
 
-        if (val.length > 0) {
-            document.cookie = 'data=' + val.join(',') + '; path=/';
-            window.open('<?= base_url('user/print/'); ?>', '_blank');
-        } else {
-            alert('Pilih Siswa terlebih dahulu');
-        }
-    });
+        // Cetak Kartu Full
+        $('#print_full_card_button').click(function () {
+            var val = [];
 
-    // Cetak QR Code siswa yang dipilih
-    $('#print_qrcode_button').click(function() {
-        var val = [];
+            $('.check:checkbox:checked').each(function () {
+                val.push($(this).val());
+            });
 
-        $('.check:checkbox:checked').each(function() {
-            val.push($(this).val());
+            if (val.length > 0) {
+                document.cookie = 'data=' + val.join(',') + '; path=/';
+                window.open('<?= base_url('user/print_full/'); ?>', '_blank');
+            } else {
+                alert('Pilih Siswa terlebih dahulu');
+            }
         });
 
-        if (val.length > 0) {
-            var url = '<?= base_url('user/printqrcode'); ?>?id='
-                + encodeURIComponent(val.join(','));
 
-            window.open(url, '_blank');
-        } else {
-            alert('Pilih Siswa terlebih dahulu untuk mencetak QR Code');
-        }
+        // Cetak QR Code siswa yang dipilih
+        $('#print_qrcode_button').click(function () {
+            var val = [];
+
+            $('.check:checkbox:checked').each(function () {
+                val.push($(this).val());
+            });
+
+            if (val.length > 0) {
+                var url = '<?= base_url('user/printqrcode'); ?>?id='
+                    + encodeURIComponent(val.join(','));
+
+                window.open(url, '_blank');
+            } else {
+                alert('Pilih Siswa terlebih dahulu untuk mencetak QR Code');
+            }
+        });
+
+        // Pilih semua siswa
+        $('#checkAll').click(function () {
+            $('.check').prop('checked', this.checked);
+        });
+
+        // Perbarui checkbox pilih semua ketika pilihan berubah
+        $('.check').change(function () {
+            $('#checkAll').prop(
+                'checked',
+                $('.check').length === $('.check:checked').length
+            );
+        });
+
     });
-
-    // Pilih semua siswa
-    $('#checkAll').click(function() {
-        $('.check').prop('checked', this.checked);
-    });
-
-    // Perbarui checkbox pilih semua ketika pilihan berubah
-    $('.check').change(function() {
-        $('#checkAll').prop(
-            'checked',
-            $('.check').length === $('.check:checked').length
-        );
-    });
-
-});
 </script>

@@ -96,6 +96,14 @@ class User extends CI_Controller
 		$this->load->view('user/print');
 	}
 
+	public function print_full()
+{
+    $this->data['title_web'] = 'Cetak Kartu Siswa Full';
+    $this->load->view('user/print_full');
+}
+
+
+
 	public function detail()
 	{
 		$test = "asa";
