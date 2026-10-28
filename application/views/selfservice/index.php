@@ -257,45 +257,24 @@ body {
     gap: 5px;
 }
 
-.scan-controls { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.scan-mode { flex:1; min-width:120px; height:34px; border:1px solid #cbd5e1; border-radius:7px; padding:0 8px; background:#fff; color:#333; font-size:13px; }
-.scan-control-btn { height:34px; border:0; border-radius:7px; padding:0 10px; color:#fff; font-size:12px; font-weight:bold; cursor:pointer; }
-.btn-start-scan { background:#2e7d32; }
+.scan-buttons { display:flex; flex-direction:column; justify-content:center; gap:12px; height:100%; }
+.scan-launch-btn { width:100%; min-height:64px; border:0; border-radius:12px; color:#fff; font-size:18px; font-weight:bold; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,.15); }
+.btn-scan-member { background:#1976d2; }
+.btn-scan-book { background:#2e7d32; }
+.scan-control-btn { height:40px; border:0; border-radius:8px; padding:0 14px; color:#fff; font-size:14px; font-weight:bold; cursor:pointer; }
 .btn-stop-scan { background:#c62828; }
 .scan-control-btn:disabled { opacity:.55; cursor:not-allowed; }
-.scan-help { font-size:11px; line-height:1.35; color:#555; background:#eef6ff; border-radius:6px; padding:5px 8px; }
-
-#reader {
-
-    width: 100%;
-    height: 100%;
-
-    min-height: 0;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    overflow: hidden;
-}
-
-#reader video {
-
-    width: auto !important;
-    height: auto !important;
-
-    max-width: 100% !important;
-    max-height: 100% !important;
-
-    object-fit: contain !important;
-
-    border-radius: 8px !important;
-}
-
-#reader__dashboard_section_swaplink {
-    display: none !important;
-}
+.scan-help { font-size:12px; line-height:1.4; color:#555; text-align:center; }
+.scan-status { height:27px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#666; white-space:nowrap; overflow:hidden; }
+.scan-overlay { position:fixed; inset:0; z-index:100000; display:none; flex-direction:column; background:#07111f; color:#fff; padding:16px; }
+.scan-overlay.open { display:flex; }
+.scan-overlay-header { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:48px; }
+.scan-overlay-title { font-size:20px; font-weight:bold; }
+.scan-overlay-content { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+#reader { width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+#reader video { width:100% !important; height:100% !important; max-width:100% !important; max-height:100% !important; object-fit:contain !important; border-radius:8px !important; }
+#reader__dashboard_section_swaplink { display:none !important; }
+.scan-overlay-footer { text-align:center; padding:12px 4px; font-size:14px; color:#dbeafe; }
 
 .scan-status {
 
@@ -1181,46 +1160,21 @@ and (max-height: 700px) {
         ================================================== -->
 
         <div class="card scan-card">
-
             <div class="card-header header-blue">
-
-                <span>
-                    <i class="fa fa-qrcode"></i>
-                    SCAN QR CODE
-                </span>
-
+                <span><i class="fa fa-qrcode"></i> SCAN QR CODE</span>
             </div>
-
-
             <div class="card-body">
-
-                <div class="scan-body">
-                    <div>
-                        <div class="scan-controls">
-                            <select id="scanMode" class="scan-mode" aria-label="Pilih mode scan">
-                                <option value="anggota">👤 Scan Anggota</option>
-                                <option value="buku">📖 Scan Buku</option>
-                            </select>
-                            <button type="button" id="btnStartScanner" class="scan-control-btn btn-start-scan"><i class="fa fa-camera"></i> AKTIFKAN</button>
-                            <button type="button" id="btnStopScanner" class="scan-control-btn btn-stop-scan" disabled><i class="fa fa-stop"></i> MATIKAN</button>
-                        </div>
-                        <div class="scan-help" id="scanHelp">Pilih <b>Scan Anggota</b>, lalu tekan AKTIFKAN dan arahkan QR Code kartu anggota ke kamera.</div>
-                    </div>
-                    <div id="reader"></div>
-
-                    <div
-                        class="scan-status"
-                        id="scanStatus"
-                    >
-
-                        📷 Menyiapkan kamera...
-
-                    </div>
-
+                <div class="scan-buttons">
+                    <button type="button" id="btnScanAnggota" class="scan-launch-btn btn-scan-member">
+                        <i class="fa fa-user"></i> SCAN ANGGOTA
+                    </button>
+                    <button type="button" id="btnScanBuku" class="scan-launch-btn btn-scan-book">
+                        <i class="fa fa-book"></i> SCAN BUKU
+                    </button>
+                    <div class="scan-help" id="scanHelp">Pilih Scan Anggota terlebih dahulu sebelum memindai buku.</div>
+                    <div class="scan-status" id="scanStatus">⏸️ Kamera belum aktif</div>
                 </div>
-
             </div>
-
         </div>
 
 
@@ -1497,6 +1451,20 @@ and (max-height: 700px) {
 
 
 
+<!-- POPUP SCANNER FULL SCREEN -->
+<div id="scanOverlay" class="scan-overlay" role="dialog" aria-modal="true" aria-label="Pemindai QR Code">
+    <div class="scan-overlay-header">
+        <div class="scan-overlay-title" id="scanOverlayTitle">📷 Scan Anggota</div>
+        <button type="button" id="btnStopScanner" class="scan-control-btn btn-stop-scan">
+            <i class="fa fa-times"></i> TUTUP KAMERA
+        </button>
+    </div>
+    <div class="scan-overlay-content">
+        <div id="reader"></div>
+    </div>
+    <div class="scan-overlay-footer" id="scanOverlayStatus">Arahkan QR Code ke kamera</div>
+</div>
+
 <!-- =========================================================
      POPUP
 ========================================================= -->
@@ -1579,39 +1547,29 @@ $(document).ready(function() {
     ===================================================== */
 
     function updateScanHelp() {
-        var mode = $('#scanMode').val() || 'anggota';
-        if (mode === 'anggota') {
-            $('#scanHelp').html('Mode <b>Scan Anggota</b>: arahkan QR Code pada kartu anggota ke kamera.');
-            if (!scannerAktif) status('⏸️ Mode Scan Anggota dipilih. Tekan AKTIFKAN untuk memulai kamera.');
-        } else {
-            $('#scanHelp').html('Mode <b>Scan Buku</b>: pastikan anggota sudah dikenali, lalu arahkan QR Code buku ke kamera.');
-            if (!scannerAktif) status(idAnggota ? '⏸️ Mode Scan Buku dipilih. Tekan AKTIFKAN untuk memindai buku.' : '⚠️ Scan/input anggota terlebih dahulu sebelum scan buku.');
-        }
+        $('#scanHelp').html(idAnggota
+            ? 'Anggota sudah dikenali. Tekan <b>SCAN BUKU</b> untuk memindai buku.'
+            : 'Tekan <b>SCAN ANGGOTA</b> terlebih dahulu sebelum memindai buku.');
     }
 
     function stopScanner() {
-        if (scanner && scannerAktif) {
-            scanner.stop().then(function() {
-                scanner.clear();
-                scanner = null;
-                scannerAktif = false;
-                $('#btnStartScanner').prop('disabled', false);
-                $('#btnStopScanner').prop('disabled', true);
+        $('#scanOverlay').removeClass('open').hide();
+        if (scanner) {
+            var oldScanner = scanner;
+            scanner = null;
+            scannerAktif = false;
+            var stopPromise = oldScanner.isScanning ? oldScanner.stop() : Promise.resolve();
+            stopPromise.then(function() {
+                try { oldScanner.clear(); } catch (e) {}
                 $('#reader').empty();
-                updateScanHelp();
             }).catch(function() {
-                scannerAktif = false;
-                $('#btnStartScanner').prop('disabled', false);
-                $('#btnStopScanner').prop('disabled', true);
-                status('Kamera dihentikan. Jika kamera masih aktif, tutup izin kamera dari browser.');
+                $('#reader').empty();
             });
         } else {
             scannerAktif = false;
-            $('#btnStartScanner').prop('disabled', false);
-            $('#btnStopScanner').prop('disabled', true);
             $('#reader').empty();
-            updateScanHelp();
         }
+        $('#btnStopScanner').prop('disabled', false);
     }
 
     function resetPage() {
@@ -1658,9 +1616,8 @@ $(document).ready(function() {
             );
 
 
-        $('#scanMode').val('anggota');
         updateScanHelp();
-        status('⏸️ Scanner belum aktif. Pilih mode lalu tekan AKTIFKAN.');
+        status('⏸️ Kamera belum aktif');
         loadLoans('');
 
     }
@@ -1982,11 +1939,10 @@ $(document).ready(function() {
                             );
 
 
-                        $('#scanMode').val('buku');
                         scanStep = 'buku';
                         updateScanHelp();
                         loadLoans(id);
-                        status(scannerAktif ? '📷 Kamera aktif • Mode scan BUKU' : 'Anggota ditemukan. Tekan AKTIFKAN untuk scan buku.');
+                        status('Anggota ditemukan. Tekan SCAN BUKU untuk memindai buku.');
 
                     }
 
@@ -2237,70 +2193,26 @@ $(document).ready(function() {
     ===================================================== */
 
     function onScanSuccess(decodedText) {
-
-        if (!scannerAktif || sedangScan || sedangProses) {
-
-            return;
-
-        }
-
-
-        decodedText =
-            $.trim(decodedText);
-
-
-        if (
-            decodedText === ''
-        ) {
-
-            return;
-
-        }
-
+        if (!scannerAktif || sedangScan || sedangProses) return;
+        decodedText = $.trim(decodedText || '');
+        if (decodedText === '') return;
 
         sedangScan = true;
+        var modeSaatScan = scanStep;
 
+        // Tutup popup dan hentikan kamera segera setelah QR terbaca.
+        stopScanner();
 
-        setTimeout(
-            function() {
-
-                sedangScan = false;
-
-            },
-            1200
-        );
-
-
-        if (
-            scanStep === 'anggota'
-        ) {
-
-
-            $('#idAnggota')
-                .val(decodedText);
-
-
-            cekAnggota(
-                decodedText
-            );
-
+        if (modeSaatScan === 'anggota') {
+            $('#idAnggota').val(decodedText);
+            cekAnggota(decodedText);
+        } else {
+            $('#kodeBuku').val(decodedText);
+            cekBuku(decodedText);
         }
 
-        else {
-
-
-            $('#kodeBuku')
-                .val(decodedText);
-
-
-            cekBuku(
-                decodedText
-            );
-
-        }
-
+        setTimeout(function() { sedangScan = false; }, 1200);
     }
-
 
 
     /* =====================================================
@@ -2319,113 +2231,61 @@ $(document).ready(function() {
        START SCANNER
     ===================================================== */
 
-    function startScanner() {
+    function startScanner(mode) {
         if (scannerAktif) return;
+
+        scanStep = mode;
+        $('#scanOverlayTitle').text(mode === 'anggota' ? '👤 Scan Anggota' : '📖 Scan Buku');
+        $('#scanOverlayStatus').text('Meminta akses kamera...');
+        $('#scanOverlay').addClass('open').show();
         $('#reader').empty();
-        $('#btnStartScanner').prop('disabled', true);
-        status('<i class="fa fa-spinner fa-spin"></i> Meminta akses kamera...');
-        scanner = new Html5Qrcode(
-                'reader'
-            );
 
-
+        scanner = new Html5Qrcode('reader');
         scanner.start(
-
+            { facingMode: 'environment' },
             {
-                facingMode:
-                    'environment'
-            },
-
-            {
-
                 fps: 10,
-
-                qrbox:
-                    function(
-                        width,
-                        height
-                    ) {
-
-
-                        var size =
-                            Math.floor(
-                                Math.min(
-                                    width,
-                                    height
-                                ) * 0.65
-                            );
-
-
-                        return {
-
-                            width:
-                                size,
-
-                            height:
-                                size
-
-                        };
-
-                    }
-
+                qrbox: function(width, height) {
+                    var size = Math.floor(Math.min(width, height) * 0.65);
+                    return { width: size, height: size };
+                }
             },
-
             onScanSuccess,
-
             onScanError
-
-        )
-
-        .then(
-            function() {
-
-                scannerAktif = true;
-                $('#btnStartScanner').prop('disabled', true);
-                $('#btnStopScanner').prop('disabled', false);
-                status('📷 Kamera aktif • Mode scan ' + ($('#scanMode').val() === 'buku' ? 'BUKU' : 'ANGGOTA'));
-
-            }
-        )
-
-        .catch(
-            function() {
-
-                scannerAktif = false;
-                scanner = null;
-                $('#btnStartScanner').prop('disabled', false);
-                $('#btnStopScanner').prop('disabled', true);
-                status('⚠️ Kamera tidak tersedia • Gunakan input manual');
-
-            }
-        );
-
+        ).then(function() {
+            scannerAktif = true;
+            $('#scanOverlayStatus').text('Arahkan QR Code ' + (mode === 'anggota' ? 'kartu anggota' : 'buku') + ' ke kamera.');
+            status('📷 Kamera aktif • Mode scan ' + (mode === 'buku' ? 'BUKU' : 'ANGGOTA'));
+        }).catch(function() {
+            scannerAktif = false;
+            scanner = null;
+            $('#scanOverlay').removeClass('open').hide();
+            $('#reader').empty();
+            status('⚠️ Kamera tidak tersedia • Gunakan input manual');
+            alert('Kamera tidak dapat diakses. Pastikan izin kamera di browser sudah diberikan.');
+        });
     }
-
 
 
     /* =====================================================
        TOMBOL CEK
     ===================================================== */
 
-    $('#scanMode').on('change', function() {
-        scanStep = $(this).val();
-        updateScanHelp();
+    $('#btnScanAnggota').on('click', function() {
+        startScanner('anggota');
     });
 
-    $('#btnStartScanner').on('click', function() {
-        scanStep = $('#scanMode').val() || 'anggota';
-        if (scanStep === 'buku' && idAnggota === '' && $.trim($('#idAnggota').val()) === '') {
-            alert('Untuk scan buku, scan atau input ID anggota terlebih dahulu.');
-            $('#scanMode').val('anggota');
-            scanStep = 'anggota';
-            updateScanHelp();
+    $('#btnScanBuku').on('click', function() {
+        if (idAnggota === '' && $.trim($('#idAnggota').val()) === '') {
+            alert('Scan atau input ID anggota terlebih dahulu.');
             return;
         }
-        if (!scannerAktif) startScanner();
+        startScanner('buku');
     });
 
     $('#btnStopScanner').on('click', function() {
         stopScanner();
+        status('⏸️ Kamera ditutup');
     });
 
     $('#btnRefreshLoans').on('click', function() {
