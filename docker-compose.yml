@@ -1,16 +1,18 @@
+
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: ci3_web
     restart: unless-stopped
     ports:
       - "5173:80"
-    volumes:
-      - ./:/var/www/html
     environment:
       TZ: Asia/Jakarta
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     networks:
       - ci3_network
 
@@ -28,6 +30,12 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - ci3_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pGantiPasswordRoot123!"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 volumes:
   mysql_data:
