@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ci3_app
+    restart: unless-stopped
+    expose:
+      - "80"
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Jakarta
+    networks:
+      - ci3_network
+
+  db:
+    image: mysql:5.7
+    container_name: ci3_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: GantiPasswordRootYangKuat
+      MYSQL_DATABASE: db_perpustakaan
+      MYSQL_USER: ci3user
+      MYSQL_PASSWORD: GantiPasswordDatabaseYangKuat
+      TZ: Asia/Jakarta
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -uroot -p"$$MYSQL_ROOT_PASSWORD"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ci3_network
+
+volumes:
+  mysql_data:
+
+networks:
+  ci3_network:
+    driver: bridge

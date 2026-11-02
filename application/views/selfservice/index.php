@@ -2231,38 +2231,90 @@ $(document).ready(function() {
        START SCANNER
     ===================================================== */
 
+    function pilihKameraMTech() {
+        return Html5Qrcode.getCameras().then(function(cameras) {
+            if (!cameras || cameras.length === 0) {
+                throw new Error('Tidak ada kamera yang terdeteksi.');
+            }
+
+            // Prioritaskan kamera eksternal M-Tech WB300 jika nama perangkat terbaca.
+            var kameraMtech = cameras.find(function(camera) {
+                return /m[- ]?tech|mtech/i.test(camera.label || '');
+            });
+            if (kameraMtech) return kameraMtech;
+
+            // Pada beberapa browser nama webcam hanya tampil sebagai USB/HD/Webcam.
+            var kameraEksternal = cameras.find(function(camera) {
+                return /usb|webcam|external|hd camera/i.test(camera.label || '');
+            });
+            return kameraEksternal || cameras[0];
+        });
+    }
+
     function startScanner(mode) {
-        if (scannerAktif) return;
+        if (scannerAktif || scanner !== null) return;
 
         scanStep = mode;
         $('#scanOverlayTitle').text(mode === 'anggota' ? '👤 Scan Anggota' : '📖 Scan Buku');
-        $('#scanOverlayStatus').text('Meminta akses kamera...');
+        $('#scanOverlayStatus').text('Mendeteksi webcam M-Tech WB300...');
         $('#scanOverlay').addClass('open').show();
         $('#reader').empty();
 
-        scanner = new Html5Qrcode('reader');
-        scanner.start(
-            { facingMode: 'environment' },
-            {
-                fps: 10,
-                qrbox: function(width, height) {
-                    var size = Math.floor(Math.min(width, height) * 0.65);
-                    return { width: size, height: size };
-                }
-            },
-            onScanSuccess,
-            onScanError
-        ).then(function() {
+        pilihKameraMTech().then(function(camera) {
+            // Aktifkan pembaca QR dan barcode yang umum digunakan pada kartu/buku.
+            var formats = [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E
+            ];
+
+            scanner = new Html5Qrcode('reader', {
+                formatsToSupport: formats,
+                verbose: false
+            });
+
+            $('#scanOverlayStatus').text('Kamera: ' + (camera.label || 'Webcam terpilih') + '. Arahkan kode ke tengah kamera.');
+
+            return scanner.start(
+                camera.id,
+                {
+                    fps: 12,
+                    aspectRatio: 4 / 3,
+                    qrbox: function(width, height) {
+                        // Area lebar membantu membaca QR maupun barcode 1D pada resolusi VGA.
+                        return {
+                            width: Math.min(320, Math.floor(width * 0.85)),
+                            height: Math.min(220, Math.floor(height * 0.65))
+                        };
+                    },
+                    disableFlip: true
+                },
+                onScanSuccess,
+                onScanError
+            );
+        }).then(function() {
             scannerAktif = true;
-            $('#scanOverlayStatus').text('Arahkan QR Code ' + (mode === 'anggota' ? 'kartu anggota' : 'buku') + ' ke kamera.');
-            status('📷 Kamera aktif • Mode scan ' + (mode === 'buku' ? 'BUKU' : 'ANGGOTA'));
-        }).catch(function() {
+            $('#scanOverlayStatus').text('Arahkan QR Code/barcode ' + (mode === 'anggota' ? 'kartu anggota' : 'buku') + ' ke tengah kamera.');
+            status('📷 M-Tech WB300 aktif • Mode scan ' + (mode === 'buku' ? 'BUKU' : 'ANGGOTA'));
+        }).catch(function(error) {
             scannerAktif = false;
+            var oldScanner = scanner;
             scanner = null;
+            if (oldScanner) {
+                try {
+                    if (oldScanner.isScanning) oldScanner.stop().then(function() { oldScanner.clear(); }).catch(function() {});
+                    else oldScanner.clear();
+                } catch (e) {}
+            }
             $('#scanOverlay').removeClass('open').hide();
             $('#reader').empty();
             status('⚠️ Kamera tidak tersedia • Gunakan input manual');
-            alert('Kamera tidak dapat diakses. Pastikan izin kamera di browser sudah diberikan.');
+            console.error('Scanner error:', error);
+            alert('Kamera tidak dapat diakses. Pastikan M-Tech WB300 terhubung, izin kamera browser diberikan, dan halaman dibuka melalui localhost atau HTTPS.');
         });
     }
 
