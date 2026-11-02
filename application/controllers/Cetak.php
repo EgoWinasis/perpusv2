@@ -154,89 +154,258 @@ class Cetak extends CI_Controller
 
 
 
+
+
 	public function jumlah_buku()
 	{
-		// Create the mPDF document
+		// ==========================================
+		// FILTER LAPORAN JUMLAH BUKU
+		// ==========================================
+
+		$title = trim($this->input->get('title', TRUE));
+		$kategori = trim($this->input->get('kategori', TRUE));
+		$penerbit = trim($this->input->get('penerbit', TRUE));
+		$thn_buku = trim($this->input->get('thn_buku', TRUE));
+
+		// ==========================================
+		// QUERY DATA JUMLAH BUKU
+		// ==========================================
+
+		$this->db->select('
+        tbl_buku.title,
+        tbl_buku.id_kategori,
+        tbl_kategori.nama_kategori,
+        tbl_buku.penerbit,
+        tbl_buku.thn_buku,
+        SUM(tbl_buku.jml) AS jumlah_total
+    ');
+
+		$this->db->from('tbl_buku');
+
+		$this->db->join(
+			'tbl_kategori',
+			'tbl_kategori.id_kategori = tbl_buku.id_kategori',
+			'left'
+		);
+
+		// Filter judul
+		if ($title !== '') {
+			$this->db->like('tbl_buku.title', $title);
+		}
+
+		// Filter kategori
+		if ($kategori !== '') {
+			$this->db->like('tbl_kategori.nama_kategori', $kategori);
+		}
+
+		// Filter penerbit
+		if ($penerbit !== '') {
+			$this->db->like('tbl_buku.penerbit', $penerbit);
+		}
+
+		// Filter tahun buku
+		if ($thn_buku !== '') {
+			$this->db->like('tbl_buku.thn_buku', $thn_buku);
+		}
+
+		// Pengelompokan data buku
+		$this->db->group_by([
+			'tbl_buku.title',
+			'tbl_buku.id_kategori',
+			'tbl_kategori.nama_kategori',
+			'tbl_buku.penerbit',
+			'tbl_buku.thn_buku'
+		]);
+
+		$this->db->order_by('tbl_buku.title', 'ASC');
+
+		$jumlahBuku = $this->db->get()->result_array();
+
+		// ==========================================
+		// MEMBUAT PDF
+		// ==========================================
+
 		$document = new PDF([
 			'mode' => 'utf-8',
 			'format' => 'A4',
-			'margin_header' => '3',
-			'margin_top' => '10',
-			'margin_bottom' => '10',
-			'margin_footer' => '2',
+			'margin_header' => 3,
+			'margin_top' => 10,
+			'margin_bottom' => 10,
+			'margin_footer' => 2,
 			'default_font_size' => 12,
 			'default_font' => 'sans-serif'
 		]);
-		$documentFileName = "Data Siswa.pdf";
-		// Set some header informations for output
-		$header = [
-			'Content-Type' => 'application/pdf',
-			'Content-Disposition' => 'inline; filename="' . $documentFileName . '"'
-		];
 
+		$document->SetTitle('DATABASE JUMLAH BUKU');
 
-		$jumlahBuku = $this->db->query("SELECT * FROM tbl_buku GROUP BY title ORDER BY title ASC")->result_array();
-
-
-
-
-		// Write some simple Content
+		// CSS PDF
 		$stylesheet = file_get_contents('cetak.css');
-		$document->SetTitle("DATABASE JUMLAH BUKU");
-		$document->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
+
+		$document->WriteHTML(
+			$stylesheet,
+			\Mpdf\HTMLParserMode::HEADER_CSS
+		);
+
+		// ==========================================
+		// JUDUL LAPORAN
+		// ==========================================
+
 		$document->WriteHTML("
-		<h4 class='text-center'>DATA JUMLAH BUKU PERPUSTAKAAN SDN GETASKEREP 01</h4>
-	");
+        <h4 class='text-center'>
+            DATA JUMLAH BUKU PERPUSTAKAAN SDN GETASKEREP 01
+        </h4>
+    ");
 
+		// ==========================================
+		// INFORMASI FILTER
+		// ==========================================
 
-		$headerTable = "<table class='table-border' width='100%'>
-	<thead>
-		<tr>
+		$filterInfo = '';
 
-			<th class='table-border' width='5%'>No.</th>
-			<th class='table-border' width='45%'>Judul</th>
-			<th class='table-border' width='15%'>Kategori</th>
-			<th class='table-border' width='15%'>Penerbit</th>
-			<th class='table-border' width='10%'>Tahun Buku</th>
-			<th class='table-border' width='10%'>Jumlah Total Buku</th>
-		</tr>
-	</thead>
-	<tbody>";
-		$footerTable = "
-			</tbody>
-		</table>
-			";
-
-		$dataTable = "";
-
-		$no = 1;
-		for ($i = 0; $i < count($jumlahBuku); $i++) {
-
-			$kategori = $this->db->query("SELECT * FROM tbl_kategori WHERE `id_kategori` = " . $jumlahBuku[$i]['id_kategori'])->result_array();
-			$jumlah = $this->db->query('SELECT sum(jml) FROM `tbl_buku` WHERE title = "' . $jumlahBuku[$i]['title'] . '"')->result_array();
-
-			$tbody = "
-				<tr>
-				
-					<td class='table-border'>{$no}</td>
-					<td class='table-border'>{$jumlahBuku[$i]['title']}</td>
-					<td class='table-border'>{$kategori[0]['nama_kategori']}</td>
-					<td class='table-border'>{$jumlahBuku[$i]['penerbit']}</td>
-					<td class='table-border'>{$jumlahBuku[$i]['thn_buku']}</td>
-					<td class='table-border'>{$jumlah[0]['sum(jml)']}</td>
-				</tr>
-				";
-
-			$dataTable .= $tbody;
-
-			$no++;
+		if ($title !== '') {
+			$filterInfo .= '<b>Judul:</b> ' . html_escape($title) . ' &nbsp; ';
 		}
 
-		$html = $headerTable . $dataTable . $footerTable;
+		if ($kategori !== '') {
+			$filterInfo .= '<b>Kategori:</b> ' . html_escape($kategori) . ' &nbsp; ';
+		}
 
-		$document->WriteHTML("{$html}");
-		$document->Output("Data Buku.pdf", "I");
+		if ($penerbit !== '') {
+			$filterInfo .= '<b>Penerbit:</b> ' . html_escape($penerbit) . ' &nbsp; ';
+		}
+
+		if ($thn_buku !== '') {
+			$filterInfo .= '<b>Tahun:</b> ' . html_escape($thn_buku) . ' &nbsp; ';
+		}
+
+		if ($filterInfo !== '') {
+			$document->WriteHTML("
+            <p style='font-size:10px;'>
+                Filter: {$filterInfo}
+            </p>
+        ");
+		}
+
+		// ==========================================
+		// HEADER TABEL
+		// ==========================================
+
+		$html = "
+        <table class='table-border' width='100%'>
+            <thead>
+                <tr>
+                    <th class='table-border' width='5%'>No.</th>
+                    <th class='table-border' width='35%'>Judul</th>
+                    <th class='table-border' width='15%'>Kategori</th>
+                    <th class='table-border' width='15%'>Penerbit</th>
+                    <th class='table-border' width='15%'>Tahun Buku</th>
+                    <th class='table-border' width='15%'>Jumlah Total Buku</th>
+                </tr>
+            </thead>
+            <tbody>
+    ";
+
+		// ==========================================
+		// ISI TABEL
+		// ==========================================
+
+		$no = 1;
+		$totalSeluruhBuku = 0;
+
+		if (!empty($jumlahBuku)) {
+
+			foreach ($jumlahBuku as $isi) {
+
+				$judul = !empty($isi['title'])
+					? html_escape($isi['title'])
+					: '-';
+
+				$kategoriNama = !empty($isi['nama_kategori'])
+					? html_escape($isi['nama_kategori'])
+					: '-';
+
+				$namaPenerbit = !empty($isi['penerbit'])
+					? html_escape($isi['penerbit'])
+					: '-';
+
+				$tahun = !empty($isi['thn_buku'])
+					? html_escape($isi['thn_buku'])
+					: '-';
+
+				$jumlahTotal = (int) $isi['jumlah_total'];
+
+				$totalSeluruhBuku += $jumlahTotal;
+
+				$html .= "
+                <tr>
+                    <td class='table-border' align='center'>
+                        {$no}
+                    </td>
+
+                    <td class='table-border'>
+                        {$judul}
+                    </td>
+
+                    <td class='table-border'>
+                        {$kategoriNama}
+                    </td>
+
+                    <td class='table-border'>
+                        {$namaPenerbit}
+                    </td>
+
+                    <td class='table-border' align='center'>
+                        {$tahun}
+                    </td>
+
+                    <td class='table-border' align='center'>
+                        {$jumlahTotal}
+                    </td>
+                </tr>
+            ";
+
+				$no++;
+			}
+
+		} else {
+
+			$html .= "
+            <tr>
+                <td class='table-border' colspan='6' align='center'>
+                    Data jumlah buku tidak ditemukan.
+                </td>
+            </tr>
+        ";
+		}
+
+		$html .= "
+            </tbody>
+        </table>
+    ";
+
+		$document->WriteHTML($html);
+
+		// ==========================================
+		// TOTAL KESELURUHAN
+		// ==========================================
+
+		$totalJudul = count($jumlahBuku);
+
+		$document->WriteHTML("
+        <p style='margin-top:10px; font-size:11px;'>
+            <b>Total Judul Buku: {$totalJudul}</b><br>
+            <b>Total Seluruh Eksemplar Buku: {$totalSeluruhBuku}</b>
+        </p>
+    ");
+
+		// ==========================================
+		// OUTPUT PDF
+		// ==========================================
+
+		$document->Output('Data Jumlah Buku.pdf', 'I');
 	}
+
+
 
 
 	public function buku()
@@ -531,9 +700,99 @@ class Cetak extends CI_Controller
 		$document->Output("Data Kategori.pdf", "I");
 	}
 	// 
+
 	public function buku_digital()
 	{
-		// Create the mPDF document
+		// ==========================================
+		// FILTER DATA BUKU DIGITAL
+		// ==========================================
+
+		$kode_buku = trim($this->input->get('kode_buku', TRUE));
+		$isbn = trim($this->input->get('isbn', TRUE));
+		$title = trim($this->input->get('title', TRUE));
+		$penerbit = trim($this->input->get('penerbit', TRUE));
+		$thn_buku = trim($this->input->get('thn_buku', TRUE));
+		$tanggal_mulai = trim($this->input->get('tanggal_mulai', TRUE));
+		$tanggal_selesai = trim($this->input->get('tanggal_selesai', TRUE));
+
+		// ==========================================
+		// QUERY DATA BUKU DIGITAL
+		// ==========================================
+
+		$this->db->select('
+        tbl_buku_digital.*,
+        tbl_kategori.nama_kategori
+    ');
+
+		$this->db->from('tbl_buku_digital');
+
+		$this->db->join(
+			'tbl_kategori',
+			'tbl_kategori.id_kategori = tbl_buku_digital.id_kategori',
+			'left'
+		);
+
+		// Filter kode buku
+		if ($kode_buku != '') {
+			$this->db->like('tbl_buku_digital.kode_buku', $kode_buku);
+		}
+
+		// Filter ISBN
+		if ($isbn != '') {
+			$this->db->like('tbl_buku_digital.isbn', $isbn);
+		}
+
+		// Filter judul
+		if ($title != '') {
+			$this->db->like('tbl_buku_digital.title', $title);
+		}
+
+		// Filter penerbit
+		if ($penerbit != '') {
+			$this->db->like('tbl_buku_digital.penerbit', $penerbit);
+		}
+
+		// Filter tahun buku
+		if ($thn_buku != '') {
+			$this->db->like('tbl_buku_digital.thn_buku', $thn_buku);
+		}
+
+		// Validasi format tanggal YYYY-MM-DD
+		$validTanggalMulai = (
+			$tanggal_mulai != '' &&
+			preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_mulai)
+		);
+
+		$validTanggalSelesai = (
+			$tanggal_selesai != '' &&
+			preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_selesai)
+		);
+
+		// Filter tanggal masuk mulai
+		if ($validTanggalMulai) {
+			$this->db->where(
+				'tbl_buku_digital.tgl_masuk >=',
+				$tanggal_mulai
+			);
+		}
+
+		// Filter tanggal masuk sampai
+		if ($validTanggalSelesai) {
+			$this->db->where(
+				'tbl_buku_digital.tgl_masuk <',
+				date('Y-m-d', strtotime($tanggal_selesai . ' +1 day'))
+			);
+		}
+
+		// Urutkan berdasarkan kode buku
+		$this->db->order_by('tbl_buku_digital.kode_buku', 'ASC');
+
+		$digital = $this->db->get()->result_array();
+
+		// ==========================================
+		// MEMBUAT DOKUMEN PDF
+		// ==========================================
+
 		$document = new PDF([
 			'mode' => 'utf-8',
 			'format' => 'A4-L',
@@ -544,78 +803,163 @@ class Cetak extends CI_Controller
 			'default_font_size' => 12,
 			'default_font' => 'sans-serif'
 		]);
+
 		$documentFileName = "Data Buku Digital.pdf";
-		// Set some header informations for output
+
 		$header = [
 			'Content-Type' => 'application/pdf',
 			'Content-Disposition' => 'inline; filename="' . $documentFileName . '"'
 		];
 
+		// ==========================================
+		// CSS DAN JUDUL LAPORAN
+		// ==========================================
 
-		$digital = $this->db->query("SELECT * FROM tbl_buku_digital ORDER BY kode_buku")->result_array();
-
-
-
-
-
-		// Write some simple Content
 		$stylesheet = file_get_contents('cetak.css');
+
 		$document->SetTitle("DATABASE BUKU DIGITAL");
-		$document->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
+
+		$document->WriteHTML(
+			$stylesheet,
+			\Mpdf\HTMLParserMode::HEADER_CSS
+		);
+
 		$document->WriteHTML("
-		<h4 class='text-center'>DATA BUKU DIGITAL PERPUSTAKAAN SDN GETASKEREP 01</h4>
-	");
+        <h4 class='text-center'>
+            DATA BUKU DIGITAL PERPUSTAKAAN SDN GETASKEREP 01
+        </h4>
+    ");
 
+		// ==========================================
+		// INFORMASI FILTER YANG DIGUNAKAN
+		// ==========================================
 
-		$headerTable = "<table class='table-border' width='100%'>
-	<thead>
-		<tr>
+		$filterInfo = '';
 
-			<th class='table-border' width='5%'>No.</th>
-			<th class='table-border' width='10%'>Kode</th>
-			<th class='table-border' width='15%'>ISBN</th>
-			<th class='table-border' width='25%'>Judul</th>
-			<th class='table-border' width='13%'>Kategori</th>
-			<th class='table-border' width='25%'>Penerbit</th>
-			<th class='table-border' width='7%'>Thn</th>
-		</tr>
-	</thead>
-	<tbody>";
-		$footerTable = "
-			</tbody>
-		</table>
-			";
+		if ($kode_buku != '') {
+			$filterInfo .= '<b>Kode Buku:</b> ' . html_escape($kode_buku) . ' &nbsp; ';
+		}
 
-		$dataTable = "";
+		if ($isbn != '') {
+			$filterInfo .= '<b>ISBN:</b> ' . html_escape($isbn) . ' &nbsp; ';
+		}
+
+		if ($title != '') {
+			$filterInfo .= '<b>Judul:</b> ' . html_escape($title) . ' &nbsp; ';
+		}
+
+		if ($penerbit != '') {
+			$filterInfo .= '<b>Penerbit:</b> ' . html_escape($penerbit) . ' &nbsp; ';
+		}
+
+		if ($thn_buku != '') {
+			$filterInfo .= '<b>Tahun:</b> ' . html_escape($thn_buku) . ' &nbsp; ';
+		}
+
+		if ($validTanggalMulai) {
+			$filterInfo .= '<b>Dari:</b> ' . html_escape($tanggal_mulai) . ' &nbsp; ';
+		}
+
+		if ($validTanggalSelesai) {
+			$filterInfo .= '<b>Sampai:</b> ' . html_escape($tanggal_selesai) . ' &nbsp; ';
+		}
+
+		if ($filterInfo != '') {
+			$document->WriteHTML("
+            <p style='font-size:10px;'>
+                Filter: {$filterInfo}
+            </p>
+        ");
+		}
+
+		// ==========================================
+		// HEADER TABEL
+		// ==========================================
+
+		$headerTable = "
+        <table class='table-border' width='100%'>
+            <thead>
+                <tr>
+                    <th class='table-border' width='5%'>No.</th>
+                    <th class='table-border' width='10%'>Kode</th>
+                    <th class='table-border' width='15%'>ISBN</th>
+                    <th class='table-border' width='25%'>Judul</th>
+                    <th class='table-border' width='13%'>Kategori</th>
+                    <th class='table-border' width='25%'>Penerbit</th>
+                    <th class='table-border' width='7%'>Thn</th>
+                </tr>
+            </thead>
+            <tbody>
+    ";
+
+		$dataTable = '';
+
+		// ==========================================
+		// ISI TABEL
+		// ==========================================
 
 		$no = 1;
-		for ($i = 0; $i < count($digital); $i++) {
 
-			$kategori = $this->db->query("SELECT * FROM tbl_kategori WHERE `id_kategori` = " . $digital[$i]['id_kategori'])->result_array();
+		foreach ($digital as $isi) {
 
-			$tbody = "
-				<tr>
-				
-					<td class='table-border'>{$no}</td>
-					<td class='table-border'>{$digital[$i]['kode_buku']}</td>
-					<td class='table-border'>{$digital[$i]['isbn']}</td>
-					<td class='table-border'>{$digital[$i]['title']}</td>
-					<td class='table-border'>{$kategori[0]['nama_kategori']}</td>
-					<td class='table-border'>{$digital[$i]['penerbit']}</td>
-					<td class='table-border'>{$digital[$i]['thn_buku']}</td>
-				</tr>
-				";
+			$kategori = !empty($isi['nama_kategori'])
+				? $isi['nama_kategori']
+				: '-';
 
-			$dataTable .= $tbody;
+			$dataTable .= "
+            <tr>
+                <td class='table-border'>{$no}</td>
+                <td class='table-border'>" . html_escape($isi['kode_buku']) . "</td>
+                <td class='table-border'>" . html_escape($isi['isbn']) . "</td>
+                <td class='table-border'>" . html_escape($isi['title']) . "</td>
+                <td class='table-border'>" . html_escape($kategori) . "</td>
+                <td class='table-border'>" . html_escape($isi['penerbit']) . "</td>
+                <td class='table-border'>" . html_escape($isi['thn_buku']) . "</td>
+            </tr>
+        ";
 
 			$no++;
 		}
 
+		// Jika data tidak ditemukan
+		if (count($digital) == 0) {
+			$dataTable .= "
+            <tr>
+                <td class='table-border' colspan='7' align='center'>
+                    Data buku digital tidak ditemukan.
+                </td>
+            </tr>
+        ";
+		}
+
+		$footerTable = "
+            </tbody>
+        </table>
+    ";
+
+		// ==========================================
+		// TOTAL DATA
+		// ==========================================
+
+		$totalData = count($digital);
+
 		$html = $headerTable . $dataTable . $footerTable;
 
-		$document->WriteHTML("{$html}");
+		$document->WriteHTML($html);
+
+		$document->WriteHTML("
+        <p style='margin-top:10px; font-size:11px;'>
+            <b>Total Buku Digital: {$totalData} buku</b>
+        </p>
+    ");
+
+		// ==========================================
+		// OUTPUT PDF
+		// ==========================================
+
 		$document->Output("Data Buku Digital.pdf", "I");
 	}
+
 
 
 	public function alat()
