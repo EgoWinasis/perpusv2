@@ -21,7 +21,7 @@ class Kehadiran extends CI_Controller
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 		$kehadiran_siswa = array();
 		$today = date("Y-m-d");
-		$res =  $this->db->query("SELECT * FROM `tbl_kehadiran` WHERE `tgl_kehadiran` = '" . $today . "'")->result_array();
+		$res = $this->db->query("SELECT * FROM `tbl_kehadiran` WHERE `tgl_kehadiran` = '" . $today . "'")->result_array();
 		$this->data['today'] = $today;
 		if (count($res) <= 0) {
 
@@ -46,7 +46,7 @@ class Kehadiran extends CI_Controller
 			$id_siswa = substr($all_id_siswa, 0, strlen($all_id_siswa) - 1);
 			// var_dump($id_siswa);
 			// die();
-			$res_siswa =  $this->db->query("SELECT * FROM `tbl_siswa` WHERE `id_siswa` IN (" . $id_siswa . ")  ")->result_array();
+			$res_siswa = $this->db->query("SELECT * FROM `tbl_siswa` WHERE `id_siswa` IN (" . $id_siswa . ")  ")->result_array();
 
 			// var_dump($all_id_siswa);
 			// // var_dump($res_siswa);
@@ -77,25 +77,25 @@ class Kehadiran extends CI_Controller
 
 		$tanggal = htmlentities($this->input->post('tanggal', TRUE));
 		$id_siswa = $_COOKIE['dataKehadiran'];
-		$kehadiran = $this->db->query("SELECT * FROM tbl_kehadiran WHERE siswa_id = '". $id_siswa . "'  AND tgl_kehadiran = '". $tanggal . "'") ;
-		$rowKehadiran = $kehadiran->num_rows(); 
+		$kehadiran = $this->db->query("SELECT * FROM tbl_kehadiran WHERE siswa_id = '" . $id_siswa . "'  AND tgl_kehadiran = '" . $tanggal . "'");
+		$rowKehadiran = $kehadiran->num_rows();
 
-		if($rowKehadiran == 0){
+		if ($rowKehadiran == 0) {
 
 			$data = array(
 				'id_kehadiran' => '',
 				'tgl_kehadiran' => $tanggal,
 				'siswa_id' => $id_siswa
-	
+
 			);
-	
+
 			$this->db->insert('tbl_kehadiran', $data);
 			if ($this->$_SESSION['pesan'] == null) {
 				$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-success">
 					<p> Tambah kehadiran telah berhasil !</p>
 					</div></div>');
 			}
-		}else{
+		} else {
 			if ($this->$_SESSION['pesan'] == null) {
 				$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-warning">
 					<p> Data kehadiran sudah ada !</p>
@@ -195,8 +195,8 @@ class Kehadiran extends CI_Controller
 			echo '<script>alert("halaman tidak ditemukan");window.location="' . base_url('user') . '";</script>';
 		}
 
-		$siswa =  $this->db->query("SELECT * FROM `tbl_siswa` WHERE `id_siswa` = '" . $this->uri->segment('3') . "'")->result_array();
-		$count =  $this->db->query("SELECT * FROM `tbl_pinjam` WHERE `anggota_id` = '" . $siswa[0]['nis'] . "'")->result_array();
+		$siswa = $this->db->query("SELECT * FROM `tbl_siswa` WHERE `id_siswa` = '" . $this->uri->segment('3') . "'")->result_array();
+		$count = $this->db->query("SELECT * FROM `tbl_pinjam` WHERE `anggota_id` = '" . $siswa[0]['nis'] . "'")->result_array();
 		if ((count($count)) > 0) {
 
 			$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-danger">
@@ -215,12 +215,12 @@ class Kehadiran extends CI_Controller
 
 	public function result()
 	{
-		
+
 		$awal = $this->input->post('siswa_dari');
 		$akhir = $this->input->post('siswa_sampai');
 		// $awal = '0001';
 		// $akhir = '0003';
-		$limit = $akhir-$awal;
+		$limit = $akhir - $awal;
 		$limit += 1;
 		$res = $this->db->query("SELECT * FROM `tbl_siswa` WHERE `kode_anggota` >= '" . $awal . "' ORDER BY kode_anggota ASC LIMIT $limit ")->result_array();
 
@@ -230,13 +230,13 @@ class Kehadiran extends CI_Controller
 		foreach ($res as $dd) {
 
 			$siswa = array(
-				"id_siswa"		 => $dd['id_siswa'],
-				"kode_anggota"   => $dd['kode_anggota'],
-				"nama"        	 => $dd['nama']
+				"id_siswa" => $dd['id_siswa'],
+				"kode_anggota" => $dd['kode_anggota'],
+				"nama" => $dd['nama']
 			);
 			$result_siswa[] = $siswa;
 		}
-		
+
 		echo json_encode($result_siswa);
 	}
 	public function kehadiran_siswa()
@@ -245,7 +245,7 @@ class Kehadiran extends CI_Controller
 
 		$kehadiran_siswa = array();
 		$today = date("Y-m-d");
-		$res =  $this->db->query("SELECT * FROM `tbl_kehadiran` WHERE `tgl_kehadiran` = '" . $this->input->post('tanggal') . "'")->result_array();
+		$res = $this->db->query("SELECT * FROM `tbl_kehadiran` WHERE `tgl_kehadiran` = '" . $this->input->post('tanggal') . "'")->result_array();
 		if (count($res) <= 0) {
 		} else {
 
@@ -260,7 +260,7 @@ class Kehadiran extends CI_Controller
 				$all_id_siswa .= $kehadiran_siswa[$i] . ",";
 			}
 			$id_siswa = substr($all_id_siswa, 0, strlen($all_id_siswa) - 1);
-			$res_siswa =  $this->db->query("SELECT * FROM `tbl_siswa` WHERE `id_siswa` IN (" . $id_siswa . ")  ")->result_array();
+			$res_siswa = $this->db->query("SELECT * FROM `tbl_siswa` WHERE `id_siswa` IN (" . $id_siswa . ")  ")->result_array();
 		}
 		echo json_encode($res_siswa);
 	}
@@ -269,17 +269,64 @@ class Kehadiran extends CI_Controller
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 
 		// $this->data['siswa'] = $this->M_Admin->get_table('tbl_siswa');
-		$this->data['siswa'] =  $this->db->query("SELECT * FROM `tbl_siswa` ORDER BY kode_anggota")->result_array();
+		$this->data['siswa'] = $this->db->query("SELECT * FROM `tbl_siswa` ORDER BY kode_anggota")->result_array();
 		// $res =  $this->db->query("SELECT COUNT(tgl_kehadiran) FROM `tbl_kehadiran` WHERE siswa_id LIKE '%" . $this->data['siswa'][0]['id_siswa']."%'")->result_array();
-			
+
 		// var_dump($res[0]['COUNT(tgl_kehadiran)']);
 		// 	die();
 
-			$this->data['title_web'] = 'Data Jumlah Kehadiran Siswa ' ;
-			$this->load->view('header_view', $this->data);
-			$this->load->view('sidebar_view', $this->data);
-			$this->load->view('kehadiran/jumlah_view', $this->data);
-			$this->load->view('footer_view', $this->data);
-		
+		$this->data['title_web'] = 'Data Jumlah Kehadiran Siswa ';
+		$this->load->view('header_view', $this->data);
+		$this->load->view('sidebar_view', $this->data);
+		$this->load->view('kehadiran/jumlah_view', $this->data);
+		$this->load->view('footer_view', $this->data);
+
 	}
+
+
+
+	public function self_service()
+	{
+		$this->data['title_web'] = 'Self Service Kehadiran';
+
+		$this->load->view('header_view', $this->data);
+		$this->load->view('sidebar_view', $this->data);
+		$this->load->view('kehadiran/self_service_view', $this->data);
+		$this->load->view('footer_view', $this->data);
+	}
+
+	public function cari_anggota()
+	{
+		$kode = trim($this->input->post('kode_anggota', TRUE));
+
+		if (empty($kode)) {
+			echo json_encode([
+				'status' => false,
+				'pesan' => 'Silakan masukkan kode anggota.'
+			]);
+			return;
+		}
+
+		$anggota = $this->db
+			->select('kode_anggota, nama, jenkel')
+			->from('tbl_siswa')
+			->where('kode_anggota', $kode)
+			->get()
+			->row_array();
+
+		if ($anggota) {
+			echo json_encode([
+				'status' => true,
+				'data' => $anggota
+			]);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'pesan' => 'Data anggota tidak ditemukan.'
+			]);
+		}
+	}
+
+
+
 }

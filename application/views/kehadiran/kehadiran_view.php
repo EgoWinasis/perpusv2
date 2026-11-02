@@ -1,4 +1,5 @@
-<?php if (!defined('BASEPATH')) exit('No direct script acess allowed'); ?>
+<?php if (!defined('BASEPATH'))
+    exit('No direct script acess allowed'); ?>
 <div class="content-wrapper">
     <section class="content-header">
         <h1>
@@ -20,14 +21,21 @@
                     <div class="box-header with-border">
                         <div class="col-sm-2">
 
-                            <a href="kehadiran/tambah"><button class="btn btn-primary"><i class="fa fa-plus"> </i> Tambah Kehadiran</button></a>
+                            <a href="kehadiran/tambah"><button class="btn btn-primary"><i class="fa fa-plus"> </i>
+                                    Tambah Kehadiran</button></a>
                         </div>
                         <div class="col-sm-3">
 
                             <div class="form-group">
 
-                                <input type="date" id="tanggal" class="form-control" value="<?= $today ?>" name="tanggal" required="required" placeholder="Contoh : 1999-05-18">
+                                <input type="date" id="tanggal" class="form-control" value="<?= $today ?>"
+                                    name="tanggal" required="required" placeholder="Contoh : 1999-05-18">
                             </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <a href="<?= base_url('kehadiran/self_service'); ?>" class="btn btn-success">
+                                <i class="fa fa-user"></i> Self Service Kehadiran
+                            </a>
                         </div>
                     </div>
                     <!-- /.box-header -->
@@ -58,7 +66,7 @@
                                                 <td><?= $isi['jenkel']; ?></td>
 
                                             </tr>
-                                        <?php $no++;
+                                            <?php $no++;
                                         } ?>
                                     <?php } ?>
 
@@ -72,7 +80,7 @@
     </section>
 </div>
 <script>
-    $("#tanggal").change(function() {
+    $("#tanggal").change(function () {
         // variabel dari nilai combo box kendaraan
         var tanggal = $("#tanggal").val();
         // console.log(tanggal);
@@ -84,10 +92,10 @@
             dataType: "json",
             url: "<?php echo base_url('kehadiran/kehadiran_siswa'); ?>",
             data: "tanggal=" + tanggal,
-            success: function(result_siswa) {
+            success: function (result_siswa) {
 
                 let i = 1;
-                $.each(result_siswa, function(idx, siswa) {
+                $.each(result_siswa, function (idx, siswa) {
                     // console.log(siswa.nama);
                     $("#tbody").append(`
                     <tr>
