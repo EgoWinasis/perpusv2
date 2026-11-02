@@ -2042,4 +2042,160 @@ class Cetak extends CI_Controller
 		$document->Output('Data Baca Buku Digital.pdf', 'I');
 	}
 
+
+
+
+	public function kembali_alat()
+	{
+		if ($this->session->userdata('level') != 'Petugas') {
+			redirect(base_url());
+			return;
+		}
+
+		$pinjam_id = $this->input->get('pinjam_id', TRUE);
+		$anggota_id = $this->input->get('anggota_id', TRUE);
+		$nama = $this->input->get('nama', TRUE);
+		$kode = $this->input->get('kode', TRUE);
+		$tanggal_mulai = $this->input->get('tanggal_mulai', TRUE);
+		$tanggal_selesai = $this->input->get('tanggal_selesai', TRUE);
+
+		$this->db->select('
+        tbl_pinjam_alat.pinjam_id,
+        tbl_pinjam_alat.anggota_id,
+        tbl_pinjam_alat.kode,
+        tbl_pinjam_alat.status,
+        tbl_pinjam_alat.tgl_pinjam,
+        tbl_pinjam_alat.lama_pinjam,
+        tbl_pinjam_alat.tgl_balik,
+        tbl_pinjam_alat.tgl_kembali,
+        tbl_siswa.nama
+    ');
+
+		$this->db->from('tbl_pinjam_alat');
+
+		$this->db->join(
+			'tbl_siswa',
+			'tbl_siswa.kode_anggota = tbl_pinjam_alat.anggota_id',
+			'left'
+		);
+
+		$this->db->where('tbl_pinjam_alat.status', 'Di Kembalikan');
+
+		if (!empty($pinjam_id)) {
+			$this->db->like('tbl_pinjam_alat.pinjam_id', $pinjam_id);
+		}
+
+		if (!empty($anggota_id)) {
+			$this->db->like('tbl_pinjam_alat.anggota_id', $anggota_id);
+		}
+
+		if (!empty($nama)) {
+			$this->db->like('tbl_siswa.nama', $nama);
+		}
+
+		if (!empty($kode)) {
+			$this->db->like('tbl_pinjam_alat.kode', $kode);
+		}
+
+		if (
+			!empty($tanggal_mulai) &&
+			preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_mulai)
+		) {
+			$this->db->where(
+				'tbl_pinjam_alat.tgl_kembali >=',
+				$tanggal_mulai
+			);
+		}
+
+		if (
+			!empty($tanggal_selesai) &&
+			preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_selesai)
+		) {
+			$this->db->where(
+				'tbl_pinjam_alat.tgl_kembali <',
+				date('Y-m-d', strtotime($tanggal_selesai . ' +1 day'))
+			);
+		}
+
+		$this->db->order_by('tbl_pinjam_alat.id_pinjam', 'DESC');
+
+		$data = $this->db->get()->result_array();
+
+		// Siapkan PDF
+		$pdf = new PDF([
+			'mode' => 'utf-8',
+			'format' => 'A4-L',
+			'margin_top' => 10,
+			'margin_bottom' => 10,
+			'margin_left' => 10,
+			'margin_right' => 10
+		]);
+
+		$pdf->AddPage('L');
+
+		$stylesheet = file_get_contents('cetak.css');
+		$pdf->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
+
+		$html = '
+    <h3 style="text-align:center;">RIWAYAT PENGEMBALIAN ALAT</h3>
+    <p style="text-align:center;">Data Pengembalian Alat Perpustakaan</p>
+
+    <table width="100%" border="1" cellpadding="6" cellspacing="0">
+        <thead>
+            <tr style="background-color:#eeeeee;">
+                <th width="4%">No</th>
+                <th>No Pinjam</th>
+                <th>Kode Anggota</th>
+                <th>Nama Anggota</th>
+                <th>Kode Alat</th>
+                <th>Tanggal Pinjam</th>
+                <th>Tanggal Batas Kembali</th>
+                <th>Status</th>
+                <th>Tanggal Pengembalian</th>
+            </tr>
+        </thead>
+        <tbody>';
+
+		if (count($data) > 0) {
+			$no = 1;
+
+			foreach ($data as $row) {
+				$html .= '
+            <tr>
+                <td align="center">' . $no++ . '</td>
+                <td>' . html_escape($row['pinjam_id']) . '</td>
+                <td>' . html_escape($row['anggota_id']) . '</td>
+                <td>' . html_escape($row['nama'] ?? '-') . '</td>
+                <td>' . html_escape($row['kode']) . '</td>
+                <td>' . html_escape($row['tgl_pinjam']) . '</td>
+                <td>' . html_escape($row['tgl_balik']) . '</td>
+                <td>' . html_escape($row['status']) . '</td>
+                <td>' . html_escape($row['tgl_kembali']) . '</td>
+            </tr>';
+			}
+		} else {
+			$html .= '
+        <tr>
+            <td colspan="9" align="center">
+                Tidak ada data pengembalian alat.
+            </td>
+        </tr>';
+		}
+
+		$html .= '
+        </tbody>
+    </table>
+
+    <br>
+    <p style="text-align:right;">
+        Dicetak pada: ' . date('d-m-Y H:i:s') . '
+    </p>';
+
+		$pdf->WriteHTML($html);
+
+		$pdf->Output('Riwayat_Pengembalian_Alat.pdf', 'I');
+	}
+
+
+
 }

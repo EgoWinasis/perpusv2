@@ -58,27 +58,110 @@ class Transaksi_alat extends CI_Controller
 		$this->load->view('footer_view', $this->data);
 	}
 
+
 	public function kembali()
 	{
-		$this->data['title_web'] = 'Data Pengembalian Alat ';
+		$this->data['title_web'] = 'Data Pengembalian Alat';
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 
-		if ($this->session->userdata('level') == 'Anggota') {
-			$this->data['pinjam'] = $this->db->query("SELECT DISTINCT `pinjam_id`, `anggota_id`,`kode`, 
-				`status`, `tgl_pinjam`, `lama_pinjam`, `tgl_balik`, `tgl_kembali` 
-				FROM tbl_pinjam_alat WHERE anggota_id = ? AND status = 'Di Kembalikan' 
-				ORDER BY id_pinjam DESC", array($this->session->userdata('anggota_id')));
-		} else {
-			$this->data['pinjam'] = $this->db->query("SELECT DISTINCT `pinjam_id`, `anggota_id`, `kode`,
-				`status`, `tgl_pinjam`, `lama_pinjam`, `tgl_balik`, `tgl_kembali` 
-				FROM tbl_pinjam_alat WHERE status = 'Di Kembalikan' ORDER BY id_pinjam DESC");
+		$level = $this->session->userdata('level');
+
+		// Ambil parameter pencarian
+		$pinjam_id = $this->input->get('pinjam_id', TRUE);
+		$anggota_id = $this->input->get('anggota_id', TRUE);
+		$nama = $this->input->get('nama', TRUE);
+		$kode = $this->input->get('kode', TRUE);
+		$tanggal_mulai = $this->input->get('tanggal_mulai', TRUE);
+		$tanggal_selesai = $this->input->get('tanggal_selesai', TRUE);
+
+		// Query data pengembalian alat
+		$this->db->select('
+        tbl_pinjam_alat.pinjam_id,
+        tbl_pinjam_alat.anggota_id,
+        tbl_pinjam_alat.kode,
+        tbl_pinjam_alat.status,
+        tbl_pinjam_alat.tgl_pinjam,
+        tbl_pinjam_alat.lama_pinjam,
+        tbl_pinjam_alat.tgl_balik,
+        tbl_pinjam_alat.tgl_kembali,
+        tbl_siswa.nama
+    ');
+
+		$this->db->from('tbl_pinjam_alat');
+
+		// Relasi anggota
+		$this->db->join(
+			'tbl_siswa',
+			'tbl_siswa.kode_anggota = tbl_pinjam_alat.anggota_id',
+			'left'
+		);
+
+		// Hanya data yang sudah dikembalikan
+		$this->db->where('tbl_pinjam_alat.status', 'Di Kembalikan');
+
+		// Jika login sebagai anggota, tampilkan data miliknya saja
+		if ($level == 'Anggota') {
+			$this->db->where(
+				'tbl_pinjam_alat.anggota_id',
+				$this->session->userdata('anggota_id')
+			);
 		}
 
+		// Filter nomor pinjam
+		if (!empty($pinjam_id)) {
+			$this->db->like('tbl_pinjam_alat.pinjam_id', $pinjam_id);
+		}
+
+		// Filter kode anggota
+		if (!empty($anggota_id)) {
+			$this->db->like('tbl_pinjam_alat.anggota_id', $anggota_id);
+		}
+
+		// Filter nama anggota
+		if (!empty($nama)) {
+			$this->db->like('tbl_siswa.nama', $nama);
+		}
+
+		// Filter kode alat
+		if (!empty($kode)) {
+			$this->db->like('tbl_pinjam_alat.kode', $kode);
+		}
+
+		// Filter tanggal mulai berdasarkan tanggal pengembalian
+		if (
+			!empty($tanggal_mulai) &&
+			preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_mulai)
+		) {
+			$this->db->where(
+				'tbl_pinjam_alat.tgl_kembali >=',
+				$tanggal_mulai
+			);
+		}
+
+		// Filter tanggal selesai berdasarkan tanggal pengembalian
+		if (
+			!empty($tanggal_selesai) &&
+			preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_selesai)
+		) {
+			$this->db->where(
+				'tbl_pinjam_alat.tgl_kembali <',
+				date('Y-m-d', strtotime($tanggal_selesai . ' +1 day'))
+			);
+		}
+
+		// Urutkan data terbaru
+		$this->db->order_by('tbl_pinjam_alat.id_pinjam', 'DESC');
+
+		// Ambil data
+		$this->data['pinjam'] = $this->db->get();
+
+		// Tampilkan halaman
 		$this->load->view('header_view', $this->data);
 		$this->load->view('sidebar_view', $this->data);
 		$this->load->view('kembali_alat/home', $this->data);
 		$this->load->view('footer_view', $this->data);
 	}
+
 
 
 	public function pinjam()
@@ -87,8 +170,8 @@ class Transaksi_alat extends CI_Controller
 		$this->data['nop'] = $this->M_Admin->buat_kode_pinjam('tbl_pinjam_alat', 'PJ', 'id_pinjam', 'ORDER BY id_pinjam DESC LIMIT 1');
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 		$this->data['user'] = $this->M_Admin->get_table('tbl_login');
-		$this->data['alat'] =  $this->db->query("SELECT * FROM tbl_alat ORDER BY id_alat DESC")->result_array();
-		$this->data['siswa'] =  $this->db->query("SELECT * FROM tbl_siswa ORDER BY id_siswa DESC")->result_array();
+		$this->data['alat'] = $this->db->query("SELECT * FROM tbl_alat ORDER BY id_alat DESC")->result_array();
+		$this->data['siswa'] = $this->db->query("SELECT * FROM tbl_siswa ORDER BY id_siswa DESC")->result_array();
 
 		$this->data['title_web'] = 'Tambah Pinjam Alat ';
 
@@ -189,8 +272,8 @@ class Transaksi_alat extends CI_Controller
 					'status' => 'Dipinjam',
 					'tgl_pinjam' => htmlentities($post['tgl']),
 					'lama_pinjam' => htmlentities($post['lama']),
-					'tgl_balik'  => $tgl2,
-					'tgl_kembali'  => '0',
+					'tgl_balik' => $tgl2,
+					'tgl_kembali' => '0',
 				);
 
 				$total_array = count($data);
@@ -245,7 +328,7 @@ class Transaksi_alat extends CI_Controller
 
 			$data = array(
 				'status' => 'Di Kembalikan',
-				'tgl_kembali'  => date('Y-m-d'),
+				'tgl_kembali' => date('Y-m-d'),
 			);
 
 			$total_array = count($data);
@@ -273,7 +356,7 @@ class Transaksi_alat extends CI_Controller
 	{
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 
-		$this->data['denda'] =  $this->db->query("SELECT * FROM tbl_biaya_denda ORDER BY id_biaya_denda DESC");
+		$this->data['denda'] = $this->db->query("SELECT * FROM tbl_biaya_denda ORDER BY id_biaya_denda DESC");
 
 		if (!empty($this->input->get('id'))) {
 			$id = $this->input->get('id');
@@ -385,10 +468,10 @@ class Transaksi_alat extends CI_Controller
 		if ($row->num_rows() > 0) {
 			$tes = $row->row();
 			$item = array(
-				'id'      => $id,
-				'qty'     => 1,
-				'price'   => '1000',
-				'name'    => $tes->title,
+				'id' => $id,
+				'qty' => 1,
+				'price' => '1000',
+				'name' => $tes->title,
 				'options' => array('isbn' => $tes->isbn, 'thn' => $tes->thn_buku, 'penerbit' => $tes->penerbit)
 			);
 			if (!$this->session->has_userdata('cart')) {
