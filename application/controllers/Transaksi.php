@@ -87,8 +87,8 @@ class Transaksi extends CI_Controller
 		$this->data['nop'] = $this->M_Admin->buat_kode_pinjam('tbl_pinjam', 'PJ', 'id_pinjam', 'ORDER BY id_pinjam DESC LIMIT 1');
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 		$this->data['user'] = $this->M_Admin->get_table('tbl_login');
-		$this->data['buku'] =  $this->db->query("SELECT * FROM tbl_buku ORDER BY id_buku DESC")->result_array();
-		$this->data['siswa'] =  $this->db->query("SELECT * FROM tbl_siswa ORDER BY id_siswa DESC")->result_array();
+		$this->data['buku'] = $this->db->query("SELECT * FROM tbl_buku ORDER BY id_buku DESC")->result_array();
+		$this->data['siswa'] = $this->db->query("SELECT * FROM tbl_siswa ORDER BY id_siswa DESC")->result_array();
 
 		$this->data['title_web'] = 'Tambah Pinjam Buku ';
 
@@ -190,8 +190,8 @@ class Transaksi extends CI_Controller
 					'status' => 'Dipinjam',
 					'tgl_pinjam' => htmlentities($post['tgl']),
 					'lama_pinjam' => htmlentities($post['lama']),
-					'tgl_balik'  => $tgl2,
-					'tgl_kembali'  => '0',
+					'tgl_balik' => $tgl2,
+					'tgl_kembali' => '0',
 				);
 
 				$total_array = count($data);
@@ -246,7 +246,7 @@ class Transaksi extends CI_Controller
 
 			$data = array(
 				'status' => 'Di Kembalikan',
-				'tgl_kembali'  => date('Y-m-d'),
+				'tgl_kembali' => date('Y-m-d'),
 			);
 
 			$total_array = count($data);
@@ -274,7 +274,7 @@ class Transaksi extends CI_Controller
 	{
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 
-		$this->data['denda'] =  $this->db->query("SELECT * FROM tbl_biaya_denda ORDER BY id_biaya_denda DESC");
+		$this->data['denda'] = $this->db->query("SELECT * FROM tbl_biaya_denda ORDER BY id_biaya_denda DESC");
 
 		if (!empty($this->input->get('id'))) {
 			$id = $this->input->get('id');
@@ -294,144 +294,144 @@ class Transaksi extends CI_Controller
 	}
 
 	public function dendaproses()
-{
-    // =========================================================
-    // TAMBAH HARGA DENDA
-    // =========================================================
-    if (!empty($this->input->post('tambah'))) {
+	{
+		// =========================================================
+		// TAMBAH HARGA DENDA
+		// =========================================================
+		if (!empty($this->input->post('tambah'))) {
 
-        $post = $this->input->post();
+			$post = $this->input->post();
 
-        $data = array(
-            'harga_denda'          => $post['harga'],
-            'jenis_denda'         => $post['jenis_denda'],
-            'maksimal_perhitungan'=> $post['maksimal_perhitungan'],
-            'stat'                => 'Tidak Aktif',
-            'tgl_tetap'           => date('Y-m-d')
-        );
+			$data = array(
+				'harga_denda' => $post['harga'],
+				'jenis_denda' => $post['jenis_denda'],
+				'maksimal_perhitungan' => $post['maksimal_perhitungan'],
+				'stat' => 'Tidak Aktif',
+				'tgl_tetap' => date('Y-m-d')
+			);
 
-        $this->db->insert('tbl_biaya_denda', $data);
+			$this->db->insert('tbl_biaya_denda', $data);
 
-        $this->session->set_flashdata(
-            'pesan',
-            '<div id="notifikasi">
+			$this->session->set_flashdata(
+				'pesan',
+				'<div id="notifikasi">
                 <div class="alert alert-success">
                     <p>Tambah Harga Denda Sukses !</p>
                 </div>
             </div>'
-        );
+			);
 
-        redirect(base_url('transaksi/denda'));
-    }
-
-
-    // =========================================================
-    // EDIT HARGA DENDA
-    // =========================================================
-    if (!empty($this->input->post('edit'))) {
-
-        // -----------------------------------------
-        // Nonaktifkan semua denda yang sebelumnya aktif
-        // -----------------------------------------
-        $dd = $this->M_Admin->get_tableid(
-            'tbl_biaya_denda',
-            'stat',
-            'Aktif'
-        );
-
-        foreach ($dd as $isi) {
-
-            $data1 = array(
-                'stat' => 'Tidak Aktif'
-            );
-
-            $this->db->where(
-                'id_biaya_denda',
-                $isi['id_biaya_denda']
-            );
-
-            $this->db->update(
-                'tbl_biaya_denda',
-                $data1
-            );
-        }
+			redirect(base_url('transaksi/denda'));
+		}
 
 
-        // -----------------------------------------
-        // Ambil data POST
-        // -----------------------------------------
-        $post = $this->input->post();
+		// =========================================================
+		// EDIT HARGA DENDA
+		// =========================================================
+		if (!empty($this->input->post('edit'))) {
+
+			// -----------------------------------------
+			// Nonaktifkan semua denda yang sebelumnya aktif
+			// -----------------------------------------
+			$dd = $this->M_Admin->get_tableid(
+				'tbl_biaya_denda',
+				'stat',
+				'Aktif'
+			);
+
+			foreach ($dd as $isi) {
+
+				$data1 = array(
+					'stat' => 'Tidak Aktif'
+				);
+
+				$this->db->where(
+					'id_biaya_denda',
+					$isi['id_biaya_denda']
+				);
+
+				$this->db->update(
+					'tbl_biaya_denda',
+					$data1
+				);
+			}
 
 
-        // -----------------------------------------
-        // Data yang akan diupdate
-        // -----------------------------------------
-        $data = array(
-            'harga_denda'           => $post['harga'],
-            'jenis_denda'           => $post['jenis_denda'],
-            'maksimal_perhitungan' => $post['maksimal_perhitungan'],
-            'stat'                 => $post['status'],
-            'tgl_tetap'            => date('Y-m-d')
-        );
+			// -----------------------------------------
+			// Ambil data POST
+			// -----------------------------------------
+			$post = $this->input->post();
 
 
-        // -----------------------------------------
-        // Update berdasarkan ID
-        // -----------------------------------------
-        $this->db->where(
-            'id_biaya_denda',
-            $post['edit']
-        );
-
-        $this->db->update(
-            'tbl_biaya_denda',
-            $data
-        );
+			// -----------------------------------------
+			// Data yang akan diupdate
+			// -----------------------------------------
+			$data = array(
+				'harga_denda' => $post['harga'],
+				'jenis_denda' => $post['jenis_denda'],
+				'maksimal_perhitungan' => $post['maksimal_perhitungan'],
+				'stat' => $post['status'],
+				'tgl_tetap' => date('Y-m-d')
+			);
 
 
-        $this->session->set_flashdata(
-            'pesan',
-            '<div id="notifikasi">
+			// -----------------------------------------
+			// Update berdasarkan ID
+			// -----------------------------------------
+			$this->db->where(
+				'id_biaya_denda',
+				$post['edit']
+			);
+
+			$this->db->update(
+				'tbl_biaya_denda',
+				$data
+			);
+
+
+			$this->session->set_flashdata(
+				'pesan',
+				'<div id="notifikasi">
                 <div class="alert alert-success">
                     <p>Edit Harga Denda Sukses !</p>
                 </div>
             </div>'
-        );
+			);
 
-        redirect(base_url('transaksi/denda'));
-    }
-
-
-    // =========================================================
-    // HAPUS HARGA DENDA
-    // =========================================================
-    if (!empty($this->input->get('denda_id'))) {
-
-        $id = $this->input->get('denda_id');
+			redirect(base_url('transaksi/denda'));
+		}
 
 
-        $this->db->where(
-            'id_biaya_denda',
-            $id
-        );
+		// =========================================================
+		// HAPUS HARGA DENDA
+		// =========================================================
+		if (!empty($this->input->get('denda_id'))) {
 
-        $this->db->delete(
-            'tbl_biaya_denda'
-        );
+			$id = $this->input->get('denda_id');
 
 
-        $this->session->set_flashdata(
-            'pesan',
-            '<div id="notifikasi">
+			$this->db->where(
+				'id_biaya_denda',
+				$id
+			);
+
+			$this->db->delete(
+				'tbl_biaya_denda'
+			);
+
+
+			$this->session->set_flashdata(
+				'pesan',
+				'<div id="notifikasi">
                 <div class="alert alert-warning">
                     <p>Hapus Harga Denda Sukses !</p>
                 </div>
             </div>'
-        );
+			);
 
-        redirect(base_url('transaksi/denda'));
-    }
-}
+			redirect(base_url('transaksi/denda'));
+		}
+	}
 
 
 	public function result()
@@ -470,10 +470,10 @@ class Transaksi extends CI_Controller
 		if ($row->num_rows() > 0) {
 			$tes = $row->row();
 			$item = array(
-				'id'      => $id,
-				'qty'     => 1,
-				'price'   => '1000',
-				'name'    => $tes->title,
+				'id' => $id,
+				'qty' => 1,
+				'price' => '1000',
+				'name' => $tes->title,
 				'options' => array('isbn' => $tes->isbn, 'thn' => $tes->thn_buku, 'penerbit' => $tes->penerbit)
 			);
 			if (!$this->session->has_userdata('cart')) {
@@ -558,22 +558,107 @@ class Transaksi extends CI_Controller
 		return -1;
 	}
 
+
 	public function digital()
 	{
 		$this->data['title_web'] = 'Data Pinjam Buku Digital';
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 
-		if ($this->session->userdata('level') == 'Anggota') {
-			$this->data['pinjam'] = $this->db->query("SELECT * FROM tbl_pinjam_digital ORDER BY tgl_baca");
-		} else {
-			$this->data['pinjam'] = $this->db->query("SELECT * FROM tbl_pinjam_digital ORDER BY tgl_baca");
+		$level = $this->session->userdata('level');
+
+		// Ambil parameter filter
+		$anggota_id = $this->input->get('anggota_id', TRUE);
+		$nama = $this->input->get('nama', TRUE);
+		$kode = $this->input->get('kode', TRUE);
+		$title = $this->input->get('title', TRUE);
+		$tanggal_mulai = $this->input->get('tanggal_mulai', TRUE);
+		$tanggal_selesai = $this->input->get('tanggal_selesai', TRUE);
+
+		// Query data peminjaman buku digital
+		$this->db->select('
+        tbl_pinjam_digital.*,
+        tbl_siswa.kode_anggota,
+        tbl_siswa.nama,
+        tbl_buku_digital.kode_buku,
+        tbl_buku_digital.title
+    ');
+
+		$this->db->from('tbl_pinjam_digital');
+
+		$this->db->join(
+			'tbl_siswa',
+			'tbl_siswa.id_siswa = tbl_pinjam_digital.id_siswa',
+			'left'
+		);
+
+		$this->db->join(
+			'tbl_buku_digital',
+			'tbl_buku_digital.id_buku = tbl_pinjam_digital.id_buku',
+			'left'
+		);
+
+		// Jika login sebagai anggota, tampilkan data miliknya saja
+		if ($level == 'Anggota') {
+			$this->db->where(
+				'tbl_pinjam_digital.id_siswa',
+				$this->data['idbo']
+			);
 		}
 
+		// Filter kode anggota
+		if (!empty($anggota_id)) {
+			$this->db->like('tbl_siswa.kode_anggota', $anggota_id);
+		}
+
+		// Filter nama anggota
+		if (!empty($nama)) {
+			$this->db->like('tbl_siswa.nama', $nama);
+		}
+
+		// Filter kode buku
+		if (!empty($kode)) {
+			$this->db->like('tbl_buku_digital.kode_buku', $kode);
+		}
+
+		// Filter judul buku
+		if (!empty($title)) {
+			$this->db->like('tbl_buku_digital.title', $title);
+		}
+
+		// Filter tanggal mulai
+		if (
+			!empty($tanggal_mulai) &&
+			preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_mulai)
+		) {
+			$this->db->where(
+				'tbl_pinjam_digital.tgl_baca >=',
+				$tanggal_mulai
+			);
+		}
+
+		// Filter tanggal selesai
+		if (
+			!empty($tanggal_selesai) &&
+			preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_selesai)
+		) {
+			$this->db->where(
+				'tbl_pinjam_digital.tgl_baca <',
+				date('Y-m-d', strtotime($tanggal_selesai . ' +1 day'))
+			);
+		}
+
+		// Urutkan data terbaru
+		$this->db->order_by('tbl_pinjam_digital.tgl_baca', 'DESC');
+
+		$this->data['pinjam'] = $this->db->get();
+
+		// Tampilkan halaman
 		$this->load->view('header_view', $this->data);
 		$this->load->view('sidebar_view', $this->data);
 		$this->load->view('pinjam/pinjam_digital_view', $this->data);
 		$this->load->view('footer_view', $this->data);
 	}
+
 
 
 }

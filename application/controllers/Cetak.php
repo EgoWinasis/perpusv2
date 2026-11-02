@@ -1285,361 +1285,761 @@ class Cetak extends CI_Controller
 	}
 
 
+
 	public function pinjam_buku()
 	{
-		// Create the mPDF document
+		// FILTER
+		$pinjam_id = trim($this->input->get('pinjam_id', TRUE));
+		$anggota_id = trim($this->input->get('anggota_id', TRUE));
+		$nama = trim($this->input->get('nama', TRUE));
+		$kode = trim($this->input->get('kode', TRUE));
+		$status = trim($this->input->get('status', TRUE));
+		$tanggal_mulai = trim($this->input->get('tanggal_mulai', TRUE));
+		$tanggal_selesai = trim($this->input->get('tanggal_selesai', TRUE));
+
+		// Validasi tanggal
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_mulai)) {
+			$tanggal_mulai = '';
+		}
+
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_selesai)) {
+			$tanggal_selesai = '';
+		}
+
+		// QUERY
+		$this->db->select('
+        p.pinjam_id,
+        p.anggota_id,
+        p.kode,
+        p.status,
+        p.tgl_pinjam,
+        p.lama_pinjam,
+        p.tgl_balik,
+        p.tgl_kembali,
+        s.nama
+    ');
+
+		$this->db->from('tbl_pinjam p');
+		$this->db->join(
+			'tbl_siswa s',
+			's.kode_anggota = p.anggota_id',
+			'left'
+		);
+
+		if ($pinjam_id !== '') {
+			$this->db->like('p.pinjam_id', $pinjam_id);
+		}
+
+		if ($anggota_id !== '') {
+			$this->db->like('p.anggota_id', $anggota_id);
+		}
+
+		if ($nama !== '') {
+			$this->db->like('s.nama', $nama);
+		}
+
+		if ($kode !== '') {
+			$this->db->like('p.kode', $kode);
+		}
+
+		if ($status !== '') {
+			$this->db->where('p.status', $status);
+		}
+
+		if ($tanggal_mulai !== '') {
+			$this->db->where('p.tgl_pinjam >=', $tanggal_mulai);
+		}
+
+		if ($tanggal_selesai !== '') {
+			$this->db->where(
+				'p.tgl_pinjam <',
+				date('Y-m-d', strtotime($tanggal_selesai . ' +1 day'))
+			);
+		}
+
+		$this->db->order_by('p.id_pinjam', 'DESC');
+
+		$data = $this->db->get()->result_array();
+
+		// PDF
 		$document = new PDF([
 			'mode' => 'utf-8',
 			'format' => 'A4-L',
-			'margin_header' => '3',
-			'margin_top' => '10',
-			'margin_bottom' => '10',
-			'margin_footer' => '2',
+			'margin_header' => 3,
+			'margin_top' => 10,
+			'margin_bottom' => 10,
+			'margin_footer' => 2,
 			'default_font_size' => 12,
 			'default_font' => 'sans-serif'
 		]);
-		$documentFileName = "Data Pinjam Buku.pdf";
-		// Set some header informations for output
-		$header = [
-			'Content-Type' => 'application/pdf',
-			'Content-Disposition' => 'inline; filename="' . $documentFileName . '"'
+
+		$document->SetTitle('DATA RIWAYAT PEMINJAMAN BUKU');
+
+		$stylesheet = file_get_contents('cetak.css');
+		$document->WriteHTML(
+			$stylesheet,
+			\Mpdf\HTMLParserMode::HEADER_CSS
+		);
+
+		$document->WriteHTML("
+        <h4 class='text-center'>
+            DATA PEMINJAMAN BUKU PERPUSTAKAAN SDN GETASKEREP 01
+        </h4>
+    ");
+
+		// INFORMASI FILTER
+		$filter = '';
+
+		$filters = [
+			'Nomor Pinjam' => $pinjam_id,
+			'Kode Anggota' => $anggota_id,
+			'Nama Anggota' => $nama,
+			'Kode Buku' => $kode,
+			'Status' => $status,
+			'Tanggal Mulai' => $tanggal_mulai,
+			'Tanggal Selesai' => $tanggal_selesai
 		];
 
+		foreach ($filters as $label => $value) {
+			if ($value !== '') {
+				$filter .= '<b>' . $label . ':</b> '
+					. html_escape($value) . ' &nbsp; ';
+			}
+		}
 
-		$pinjamBuku = $this->db->query("SELECT DISTINCT `pinjam_id`, `anggota_id`,`kode`, 
-		`status`, `tgl_pinjam`, `lama_pinjam`, `tgl_balik`, `tgl_kembali` 
-		FROM tbl_pinjam WHERE status = 'Di Kembalikan' ORDER BY id_pinjam DESC")->result_array();
+		if ($filter !== '') {
+			$document->WriteHTML(
+				"<p style='font-size:10px;'>Filter: {$filter}</p>"
+			);
+		}
 
-
-
-
-
-		// Write some simple Content
-		$stylesheet = file_get_contents('cetak.css');
-		$document->SetTitle("DATABASE DATA PEMINJAMAN BUKU");
-		$document->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
-		$document->WriteHTML("
-		<h4 class='text-center'>DATA PEMINJAMAN BUKU PERPUSTAKAAN SDN GETASKEREP 01</h4>
-	");
-
-
-		$headerTable = "<table class='table-border' width='100%'>
-	<thead>
-		<tr>
-
-			<th class='table-border' width='5%'>No.</th>
-			<th class='table-border' width='10%'>No. Pinjam</th>
-			<th class='table-border' width='10%'>Kode Anggota</th>
-			<th class='table-border' width='23%'>Nama</th>
-			<th class='table-border' width='10%'>Kode Buku</th>
-			<th class='table-border' width='10%'>Pinjam</th>
-			<th class='table-border' width='10%'>Balik</th>
-			<th class='table-border' width='12%'>Status</th>
-			<th class='table-border' width='10%'>Kembali</th>
-		</tr>
-	</thead>
-	<tbody>";
-		$footerTable = "
-			</tbody>
-		</table>
-			";
-
-		$dataTable = "";
+		// HEADER TABEL
+		$html = "
+        <table class='table-border' width='100%'>
+            <thead>
+                <tr>
+                    <th class='table-border' width='5%'>No.</th>
+                    <th class='table-border' width='10%'>No. Pinjam</th>
+                    <th class='table-border' width='10%'>Kode Anggota</th>
+                    <th class='table-border' width='23%'>Nama</th>
+                    <th class='table-border' width='10%'>Kode Buku</th>
+                    <th class='table-border' width='10%'>Pinjam</th>
+                    <th class='table-border' width='10%'>Balik</th>
+                    <th class='table-border' width='12%'>Status</th>
+                    <th class='table-border' width='10%'>Kembali</th>
+                </tr>
+            </thead>
+            <tbody>
+    ";
 
 		$no = 1;
-		for ($i = 0; $i < count($pinjamBuku); $i++) {
 
-			$siswa = $this->db->query("SELECT * FROM tbl_siswa WHERE kode_anggota = '" . $pinjamBuku[$i]['anggota_id'] . "'")->result_array();
+		foreach ($data as $isi) {
 
+			$namaAnggota = !empty($isi['nama'])
+				? html_escape($isi['nama'])
+				: '-';
 
-			$tbody = "
-				<tr>
-				
-					<td class='table-border'>{$no}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['pinjam_id']}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['anggota_id']}</td>
-					<td class='table-border'>{$siswa[0]['nama']}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['kode']}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['tgl_pinjam']}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['tgl_balik']}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['status']}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['tgl_kembali']}</td>
-				</tr>
-				";
+			$tglKembali = ($isi['tgl_kembali'] == '0' || empty($isi['tgl_kembali']))
+				? 'Belum dikembalikan'
+				: html_escape($isi['tgl_kembali']);
 
-			$dataTable .= $tbody;
+			$html .= "
+            <tr>
+                <td class='table-border'>{$no}</td>
+                <td class='table-border'>" . html_escape($isi['pinjam_id']) . "</td>
+                <td class='table-border'>" . html_escape($isi['anggota_id']) . "</td>
+                <td class='table-border'>{$namaAnggota}</td>
+                <td class='table-border'>" . html_escape($isi['kode']) . "</td>
+                <td class='table-border'>" . html_escape($isi['tgl_pinjam']) . "</td>
+                <td class='table-border'>" . html_escape($isi['tgl_balik']) . "</td>
+                <td class='table-border'>" . html_escape($isi['status']) . "</td>
+                <td class='table-border'>{$tglKembali}</td>
+            </tr>
+        ";
 
 			$no++;
 		}
 
-		$html = $headerTable . $dataTable . $footerTable;
+		if (empty($data)) {
+			$html .= "
+            <tr>
+                <td class='table-border' colspan='9' align='center'>
+                    Data peminjaman tidak ditemukan.
+                </td>
+            </tr>
+        ";
+		}
 
-		$document->WriteHTML("{$html}");
-		$document->Output("Data Peminjaman Buku.pdf", "I");
+		$html .= "</tbody></table>";
+
+		$document->WriteHTML($html);
+
+		$total = count($data);
+
+		$document->WriteHTML("
+        <p style='margin-top:10px;font-size:11px;'>
+            <b>Total Data Peminjaman: {$total}</b>
+        </p>
+    ");
+
+		$document->Output('Data Pinjam Buku.pdf', 'I');
 	}
 
 	public function total_pinjam_buku()
 	{
-		// Create the mPDF document
+		// FILTER
+		$pinjam_id = trim($this->input->get('pinjam_id', TRUE));
+		$anggota_id = trim($this->input->get('anggota_id', TRUE));
+		$nama = trim($this->input->get('nama', TRUE));
+		$kode = trim($this->input->get('kode', TRUE));
+		$status = trim($this->input->get('status', TRUE));
+		$tanggal_mulai = trim($this->input->get('tanggal_mulai', TRUE));
+		$tanggal_selesai = trim($this->input->get('tanggal_selesai', TRUE));
+
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_mulai)) {
+			$tanggal_mulai = '';
+		}
+
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_selesai)) {
+			$tanggal_selesai = '';
+		}
+
+		// QUERY REKAP
+		$this->db->select('
+        p.anggota_id,
+        s.nama,
+        COUNT(p.id_pinjam) AS total
+    ');
+
+		$this->db->from('tbl_pinjam p');
+		$this->db->join(
+			'tbl_siswa s',
+			's.kode_anggota = p.anggota_id',
+			'left'
+		);
+
+		if ($pinjam_id !== '') {
+			$this->db->like('p.pinjam_id', $pinjam_id);
+		}
+
+		if ($anggota_id !== '') {
+			$this->db->like('p.anggota_id', $anggota_id);
+		}
+
+		if ($nama !== '') {
+			$this->db->like('s.nama', $nama);
+		}
+
+		if ($kode !== '') {
+			$this->db->like('p.kode', $kode);
+		}
+
+		if ($status !== '') {
+			$this->db->where('p.status', $status);
+		}
+
+		if ($tanggal_mulai !== '') {
+			$this->db->where('p.tgl_pinjam >=', $tanggal_mulai);
+		}
+
+		if ($tanggal_selesai !== '') {
+			$this->db->where(
+				'p.tgl_pinjam <',
+				date('Y-m-d', strtotime($tanggal_selesai . ' +1 day'))
+			);
+		}
+
+		$this->db->group_by([
+			'p.anggota_id',
+			's.nama'
+		]);
+
+		$this->db->order_by('total', 'DESC');
+
+		$data = $this->db->get()->result_array();
+
+		// PDF
 		$document = new PDF([
 			'mode' => 'utf-8',
 			'format' => 'A4',
-			'margin_header' => '3',
-			'margin_top' => '10',
-			'margin_bottom' => '10',
-			'margin_footer' => '2',
+			'margin_header' => 3,
+			'margin_top' => 10,
+			'margin_bottom' => 10,
+			'margin_footer' => 2,
 			'default_font_size' => 12,
 			'default_font' => 'sans-serif'
 		]);
-		$documentFileName = "Data Pinjam Buku.pdf";
-		// Set some header informations for output
-		$header = [
-			'Content-Type' => 'application/pdf',
-			'Content-Disposition' => 'inline; filename="' . $documentFileName . '"'
+
+		$document->SetTitle('DATA TOTAL PEMINJAMAN BUKU');
+
+		$stylesheet = file_get_contents('cetak.css');
+		$document->WriteHTML(
+			$stylesheet,
+			\Mpdf\HTMLParserMode::HEADER_CSS
+		);
+
+		$document->WriteHTML("
+        <h4 class='text-center'>
+            DATA TOTAL PEMINJAMAN BUKU
+            PERPUSTAKAAN SDN GETASKEREP 01
+        </h4>
+    ");
+
+		// FILTER
+		$filter = '';
+
+		$filters = [
+			'Nomor Pinjam' => $pinjam_id,
+			'Kode Anggota' => $anggota_id,
+			'Nama Anggota' => $nama,
+			'Kode Buku' => $kode,
+			'Status' => $status,
+			'Tanggal Mulai' => $tanggal_mulai,
+			'Tanggal Selesai' => $tanggal_selesai
 		];
 
+		foreach ($filters as $label => $value) {
+			if ($value !== '') {
+				$filter .= '<b>' . $label . ':</b> '
+					. html_escape($value) . ' &nbsp; ';
+			}
+		}
 
-		$pinjamBuku = $this->db->query("SELECT  COUNT(pinjam_id) AS total, `pinjam_id`, `anggota_id`,`kode`, 
-		`status`, `tgl_pinjam`, `lama_pinjam`, `tgl_balik`, `tgl_kembali` 
-		FROM tbl_pinjam WHERE status = 'Di Kembalikan' GROUP BY anggota_id ORDER BY total DESC")->result_array();
+		if ($filter !== '') {
+			$document->WriteHTML(
+				"<p style='font-size:10px;'>Filter: {$filter}</p>"
+			);
+		}
 
-
-
-
-
-		// Write some simple Content
-		$stylesheet = file_get_contents('cetak.css');
-		$document->SetTitle("DATABASE DATA PEMINJAMAN BUKU");
-		$document->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
-		$document->WriteHTML("
-		<h4 class='text-center'>DATA TOTAL PEMINJAMAN BUKU PERPUSTAKAAN SDN GETASKEREP 01</h4>
-	");
-
-
-		$headerTable = "<table class='table-border' width='100%'>
-	<thead>
-		<tr>
-
-			<th class='table-border' width='5%'>No.</th>
-			<th class='table-border' width='15%'>Kode Anggota</th>
-			<th class='table-border' width='70%'>Nama</th>
-			<th class='table-border' width='10%'>Total</th>
-		</tr>
-	</thead>
-	<tbody>";
-		$footerTable = "
-			</tbody>
-		</table>
-			";
-
-		$dataTable = "";
+		// TABEL
+		$html = "
+        <table class='table-border' width='100%'>
+            <thead>
+                <tr>
+                    <th class='table-border' width='10%'>No.</th>
+                    <th class='table-border' width='25%'>Kode Anggota</th>
+                    <th class='table-border' width='50%'>Nama</th>
+                    <th class='table-border' width='15%'>Total Buku</th>
+                </tr>
+            </thead>
+            <tbody>
+    ";
 
 		$no = 1;
-		for ($i = 0; $i < count($pinjamBuku); $i++) {
+		$totalSeluruh = 0;
 
-			$siswa = $this->db->query("SELECT * FROM tbl_siswa WHERE kode_anggota = '" . $pinjamBuku[$i]['anggota_id'] . "'")->result_array();
+		foreach ($data as $isi) {
 
+			$jumlah = (int) $isi['total'];
+			$totalSeluruh += $jumlah;
 
+			$namaAnggota = !empty($isi['nama'])
+				? html_escape($isi['nama'])
+				: '-';
 
-			$tbody = "
-				<tr>
-				
-					<td class='table-border'>{$no}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['anggota_id']}</td>
-					<td class='table-border'>{$siswa[0]['nama']}</td>
-					<td class='table-border'>{$pinjamBuku[$i]['total']}</td>
-				</tr>
-				";
-
-			$dataTable .= $tbody;
+			$html .= "
+            <tr>
+                <td class='table-border'>{$no}</td>
+                <td class='table-border'>" . html_escape($isi['anggota_id']) . "</td>
+                <td class='table-border'>{$namaAnggota}</td>
+                <td class='table-border' align='center'>{$jumlah}</td>
+            </tr>
+        ";
 
 			$no++;
 		}
 
-		$html = $headerTable . $dataTable . $footerTable;
+		if (empty($data)) {
+			$html .= "
+            <tr>
+                <td class='table-border' colspan='4' align='center'>
+                    Data peminjaman tidak ditemukan.
+                </td>
+            </tr>
+        ";
+		}
 
-		$document->WriteHTML("{$html}");
-		$document->Output("Data Alat Peraga.pdf", "I");
+		$html .= "</tbody></table>";
+
+		$document->WriteHTML($html);
+
+		$document->WriteHTML("
+        <p style='margin-top:10px;font-size:11px;'>
+            <b>Total Anggota: " . count($data) . "</b><br>
+            <b>Total Seluruh Buku Dipinjam: {$totalSeluruh}</b>
+        </p>
+    ");
+
+		$document->Output('Data Total Pinjam Buku.pdf', 'I');
 	}
-
 
 	public function pinjam_alat()
 	{
-		// Create the mPDF document
+		$pinjam_id = trim($this->input->get('pinjam_id', TRUE));
+		$anggota_id = trim($this->input->get('anggota_id', TRUE));
+		$nama = trim($this->input->get('nama', TRUE));
+		$kode = trim($this->input->get('kode', TRUE));
+		$status = trim($this->input->get('status', TRUE));
+		$tanggal_mulai = trim($this->input->get('tanggal_mulai', TRUE));
+		$tanggal_selesai = trim($this->input->get('tanggal_selesai', TRUE));
+
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_mulai)) {
+			$tanggal_mulai = '';
+		}
+
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_selesai)) {
+			$tanggal_selesai = '';
+		}
+
+		// QUERY
+		$this->db->select('
+        p.pinjam_id,
+        p.anggota_id,
+        p.kode,
+        p.status,
+        p.tgl_pinjam,
+        p.lama_pinjam,
+        p.tgl_balik,
+        p.tgl_kembali,
+        s.nama
+    ');
+
+		$this->db->from('tbl_pinjam_alat p');
+		$this->db->join(
+			'tbl_siswa s',
+			's.kode_anggota = p.anggota_id',
+			'left'
+		);
+
+		if ($pinjam_id !== '') {
+			$this->db->like('p.pinjam_id', $pinjam_id);
+		}
+
+		if ($anggota_id !== '') {
+			$this->db->like('p.anggota_id', $anggota_id);
+		}
+
+		if ($nama !== '') {
+			$this->db->like('s.nama', $nama);
+		}
+
+		if ($kode !== '') {
+			$this->db->like('p.kode', $kode);
+		}
+
+		if ($status !== '') {
+			$this->db->where('p.status', $status);
+		}
+
+		if ($tanggal_mulai !== '') {
+			$this->db->where('p.tgl_pinjam >=', $tanggal_mulai);
+		}
+
+		if ($tanggal_selesai !== '') {
+			$this->db->where(
+				'p.tgl_pinjam <',
+				date('Y-m-d', strtotime($tanggal_selesai . ' +1 day'))
+			);
+		}
+
+		$this->db->order_by('p.id_pinjam', 'DESC');
+
+		$data = $this->db->get()->result_array();
+
+		// PDF
 		$document = new PDF([
 			'mode' => 'utf-8',
 			'format' => 'A4-L',
-			'margin_header' => '3',
-			'margin_top' => '10',
-			'margin_bottom' => '10',
-			'margin_footer' => '2',
+			'margin_header' => 3,
+			'margin_top' => 10,
+			'margin_bottom' => 10,
+			'margin_footer' => 2,
 			'default_font_size' => 12,
 			'default_font' => 'sans-serif'
 		]);
-		$documentFileName = "Data Pinjam Alat.pdf";
-		// Set some header informations for output
-		$header = [
-			'Content-Type' => 'application/pdf',
-			'Content-Disposition' => 'inline; filename="' . $documentFileName . '"'
-		];
 
+		$document->SetTitle('DATA PEMINJAMAN ALAT PERAGA');
 
-		$pinjamAlat = $this->db->query("SELECT DISTINCT `pinjam_id`, `anggota_id`,`kode`, 
-		`status`, `tgl_pinjam`, `lama_pinjam`, `tgl_balik`, `tgl_kembali` 
-		FROM tbl_pinjam_alat WHERE status = 'Di Kembalikan' ORDER BY id_pinjam DESC")->result_array();
-
-
-
-
-
-		// Write some simple Content
 		$stylesheet = file_get_contents('cetak.css');
-		$document->SetTitle("DATABASE DATA PEMINJAMAN BUKU");
-		$document->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
+		$document->WriteHTML(
+			$stylesheet,
+			\Mpdf\HTMLParserMode::HEADER_CSS
+		);
+
 		$document->WriteHTML("
-		<h4 class='text-center'>DATA PEMINJAMAN ALAT PERAGA PERPUSTAKAAN SDN GETASKEREP 01</h4>
-	");
+        <h4 class='text-center'>
+            DATA PEMINJAMAN ALAT PERAGA
+            PERPUSTAKAAN SDN GETASKEREP 01
+        </h4>
+    ");
 
-
-		$headerTable = "<table class='table-border' width='100%'>
-	<thead>
-		<tr>
-
-		<th class='table-border' width='5%'>No.</th>
-		<th class='table-border' width='10%'>No. Pinjam</th>
-		<th class='table-border' width='10%'>Kode Anggota</th>
-		<th class='table-border' width='23%'>Nama</th>
-		<th class='table-border' width='10%'>Kode Buku</th>
-		<th class='table-border' width='10%'>Pinjam</th>
-		<th class='table-border' width='10%'>Balik</th>
-		<th class='table-border' width='12%'>Status</th>
-		<th class='table-border' width='10%'>Kembali</th>
-		</tr>
-	</thead>
-	<tbody>";
-		$footerTable = "
-			</tbody>
-		</table>
-			";
-
-		$dataTable = "";
+		// TABEL
+		$html = "
+        <table class='table-border' width='100%'>
+            <thead>
+                <tr>
+                    <th class='table-border'>No.</th>
+                    <th class='table-border'>No. Pinjam</th>
+                    <th class='table-border'>Kode Anggota</th>
+                    <th class='table-border'>Nama</th>
+                    <th class='table-border'>Kode Alat</th>
+                    <th class='table-border'>Pinjam</th>
+                    <th class='table-border'>Balik</th>
+                    <th class='table-border'>Status</th>
+                    <th class='table-border'>Kembali</th>
+                </tr>
+            </thead>
+            <tbody>
+    ";
 
 		$no = 1;
-		for ($i = 0; $i < count($pinjamAlat); $i++) {
 
-			$siswa = $this->db->query("SELECT * FROM tbl_siswa WHERE kode_anggota = '" . $pinjamAlat[$i]['anggota_id'] . "'")->result_array();
+		foreach ($data as $isi) {
 
+			$namaAnggota = !empty($isi['nama'])
+				? html_escape($isi['nama'])
+				: '-';
 
-			$tbody = "
-				<tr>
-				
-					<td class='table-border'>{$no}</td>
-					<td class='table-border'>{$pinjamAlat[$i]['pinjam_id']}</td>
-					<td class='table-border'>{$pinjamAlat[$i]['anggota_id']}</td>
-					<td class='table-border'>{$siswa[0]['nama']}</td>
-					<td class='table-border'>{$pinjamAlat[$i]['kode']}</td>
-					<td class='table-border'>{$pinjamAlat[$i]['tgl_pinjam']}</td>
-					<td class='table-border'>{$pinjamAlat[$i]['tgl_balik']}</td>
-					<td class='table-border'>{$pinjamAlat[$i]['status']}</td>
-					<td class='table-border'>{$pinjamAlat[$i]['tgl_kembali']}</td>
-				</tr>
-				";
+			$tglKembali = ($isi['tgl_kembali'] == '0' || empty($isi['tgl_kembali']))
+				? 'Belum dikembalikan'
+				: html_escape($isi['tgl_kembali']);
 
-			$dataTable .= $tbody;
+			$html .= "
+            <tr>
+                <td class='table-border'>{$no}</td>
+                <td class='table-border'>" . html_escape($isi['pinjam_id']) . "</td>
+                <td class='table-border'>" . html_escape($isi['anggota_id']) . "</td>
+                <td class='table-border'>{$namaAnggota}</td>
+                <td class='table-border'>" . html_escape($isi['kode']) . "</td>
+                <td class='table-border'>" . html_escape($isi['tgl_pinjam']) . "</td>
+                <td class='table-border'>" . html_escape($isi['tgl_balik']) . "</td>
+                <td class='table-border'>" . html_escape($isi['status']) . "</td>
+                <td class='table-border'>{$tglKembali}</td>
+            </tr>
+        ";
 
 			$no++;
 		}
 
-		$html = $headerTable . $dataTable . $footerTable;
+		if (empty($data)) {
+			$html .= "
+            <tr>
+                <td class='table-border' colspan='9' align='center'>
+                    Data peminjaman alat peraga tidak ditemukan.
+                </td>
+            </tr>
+        ";
+		}
 
-		$document->WriteHTML("{$html}");
-		$document->Output("Data Alat Peraga.pdf", "I");
+		$html .= "</tbody></table>";
+
+		$document->WriteHTML($html);
+
+		$document->WriteHTML("
+        <p style='margin-top:10px;font-size:11px;'>
+            <b>Total Data Peminjaman Alat: " . count($data) . "</b>
+        </p>
+    ");
+
+		$document->Output('Data Pinjam Alat.pdf', 'I');
 	}
-
 
 	public function pinjam_digital()
 	{
-		// Create the mPDF document
+		// FILTER
+		$anggota_id = trim($this->input->get('anggota_id', TRUE));
+		$nama = trim($this->input->get('nama', TRUE));
+		$kode = trim($this->input->get('kode', TRUE));
+		$title = trim($this->input->get('title', TRUE));
+		$tanggal_mulai = trim($this->input->get('tanggal_mulai', TRUE));
+		$tanggal_selesai = trim($this->input->get('tanggal_selesai', TRUE));
+
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_mulai)) {
+			$tanggal_mulai = '';
+		}
+
+		if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal_selesai)) {
+			$tanggal_selesai = '';
+		}
+
+		// QUERY
+		$this->db->select('
+        pd.*,
+        s.nama,
+        s.kode_anggota,
+        b.kode_buku,
+        b.title
+    ');
+
+		$this->db->from('tbl_pinjam_digital pd');
+
+		$this->db->join(
+			'tbl_siswa s',
+			's.id_siswa = pd.id_siswa',
+			'left'
+		);
+
+		$this->db->join(
+			'tbl_buku_digital b',
+			'b.id_buku = pd.id_buku',
+			'left'
+		);
+
+		if ($anggota_id !== '') {
+			$this->db->like('s.kode_anggota', $anggota_id);
+		}
+
+		if ($nama !== '') {
+			$this->db->like('s.nama', $nama);
+		}
+
+		if ($kode !== '') {
+			$this->db->like('b.kode_buku', $kode);
+		}
+
+		if ($title !== '') {
+			$this->db->like('b.title', $title);
+		}
+
+		if ($tanggal_mulai !== '') {
+			$this->db->where('pd.tgl_baca >=', $tanggal_mulai);
+		}
+
+		if ($tanggal_selesai !== '') {
+			$this->db->where(
+				'pd.tgl_baca <',
+				date('Y-m-d', strtotime($tanggal_selesai . ' +1 day'))
+			);
+		}
+
+		$this->db->order_by('pd.tgl_baca', 'DESC');
+
+		$data = $this->db->get()->result_array();
+
+		// PDF
 		$document = new PDF([
 			'mode' => 'utf-8',
 			'format' => 'A4-L',
-			'margin_header' => '3',
-			'margin_top' => '10',
-			'margin_bottom' => '10',
-			'margin_footer' => '2',
+			'margin_header' => 3,
+			'margin_top' => 10,
+			'margin_bottom' => 10,
+			'margin_footer' => 2,
 			'default_font_size' => 12,
 			'default_font' => 'sans-serif'
 		]);
-		$documentFileName = "Data Pinjam Alat.pdf";
-		// Set some header informations for output
-		$header = [
-			'Content-Type' => 'application/pdf',
-			'Content-Disposition' => 'inline; filename="' . $documentFileName . '"'
+
+		$document->SetTitle('DATA BACA BUKU DIGITAL');
+
+		$stylesheet = file_get_contents('cetak.css');
+		$document->WriteHTML(
+			$stylesheet,
+			\Mpdf\HTMLParserMode::HEADER_CSS
+		);
+
+		$document->WriteHTML("
+        <h4 class='text-center'>
+            DATA BACA BUKU DIGITAL
+            PERPUSTAKAAN SDN GETASKEREP 01
+        </h4>
+    ");
+
+		// FILTER
+		$filter = '';
+
+		$filters = [
+			'Kode Anggota' => $anggota_id,
+			'Nama Anggota' => $nama,
+			'Kode Buku' => $kode,
+			'Judul Buku' => $title,
+			'Tanggal Mulai' => $tanggal_mulai,
+			'Tanggal Selesai' => $tanggal_selesai
 		];
 
+		foreach ($filters as $label => $value) {
+			if ($value !== '') {
+				$filter .= '<b>' . $label . ':</b> '
+					. html_escape($value) . ' &nbsp; ';
+			}
+		}
 
-		$pinjamDigital = $this->db->query("SELECT * FROM `tbl_pinjam_digital` ORDER BY tgl_baca")->result_array();
+		if ($filter !== '') {
+			$document->WriteHTML(
+				"<p style='font-size:10px;'>Filter: {$filter}</p>"
+			);
+		}
 
-
-
-
-
-		// Write some simple Content
-		$stylesheet = file_get_contents('cetak.css');
-		$document->SetTitle("DATABASE DATA BACA BUKU DIGITAL");
-		$document->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
-		$document->WriteHTML("
-		<h4 class='text-center'>DATA BACA BUKU DIGITAL PERPUSTAKAAN SDN GETASKEREP 01</h4>
-	");
-
-
-		$headerTable = "<table class='table-border' width='100%'>
-	<thead>
-		<tr>
-
-			<th class='table-border' width='5%'>No.</th>
-			<th class='table-border' width='10%'>Kode Anggota</th>
-			<th class='table-border' width='25%'>Nama</th>
-			<th class='table-border' width='10%'>Kode Buku</th>
-			<th class='table-border' width='30%'>Judul</th>
-			<th class='table-border' width='20%'>Tanggal Baca</th>>
-		</tr>
-	</thead>
-	<tbody>";
-		$footerTable = "
-			</tbody>
-		</table>
-			";
-
-		$dataTable = "";
+		// TABEL
+		$html = "
+        <table class='table-border' width='100%'>
+            <thead>
+                <tr>
+                    <th class='table-border' width='5%'>No.</th>
+                    <th class='table-border' width='15%'>Kode Anggota</th>
+                    <th class='table-border' width='25%'>Nama</th>
+                    <th class='table-border' width='15%'>Kode Buku</th>
+                    <th class='table-border' width='25%'>Judul</th>
+                    <th class='table-border' width='15%'>Tanggal Baca</th>
+                </tr>
+            </thead>
+            <tbody>
+    ";
 
 		$no = 1;
-		for ($i = 0; $i < count($pinjamDigital); $i++) {
 
-			$siswa = $this->db->query("SELECT * FROM tbl_siswa WHERE id_siswa = " . $pinjamDigital[$i]['id_siswa'])->result_array();
-			$buku = $this->db->query("SELECT * FROM tbl_buku_digital WHERE id_buku = " . $pinjamDigital[$i]['id_buku'])->result_array();
+		foreach ($data as $isi) {
 
+			$namaAnggota = !empty($isi['nama'])
+				? html_escape($isi['nama'])
+				: '-';
 
-			$tbody = "
-				<tr>
-				
-					<td class='table-border'>{$no}</td>
-					<td class='table-border'>{$siswa[0]['kode_anggota']}</td>>
-					<td class='table-border'>{$siswa[0]['nama']}</td>>
-					<td class='table-border'>{$buku[0]['kode_buku']}</td>>
-					<td class='table-border'>{$buku[0]['title']}</td>>
-					<td class='table-border'>{$pinjamDigital[$i]['tgl_baca']}</td>>
-				</tr>
-				";
+			$kodeAnggota = !empty($isi['kode_anggota'])
+				? html_escape($isi['kode_anggota'])
+				: '-';
 
-			$dataTable .= $tbody;
+			$kodeBuku = !empty($isi['kode_buku'])
+				? html_escape($isi['kode_buku'])
+				: '-';
+
+			$judulBuku = !empty($isi['title'])
+				? html_escape($isi['title'])
+				: '-';
+
+			$html .= "
+            <tr>
+                <td class='table-border'>{$no}</td>
+                <td class='table-border'>{$kodeAnggota}</td>
+                <td class='table-border'>{$namaAnggota}</td>
+                <td class='table-border'>{$kodeBuku}</td>
+                <td class='table-border'>{$judulBuku}</td>
+                <td class='table-border'>" . html_escape($isi['tgl_baca']) . "</td>
+            </tr>
+        ";
 
 			$no++;
 		}
 
-		$html = $headerTable . $dataTable . $footerTable;
+		if (empty($data)) {
+			$html .= "
+            <tr>
+                <td class='table-border' colspan='6' align='center'>
+                    Data baca buku digital tidak ditemukan.
+                </td>
+            </tr>
+        ";
+		}
 
-		$document->WriteHTML("{$html}");
-		$document->Output("Data Alat Peraga.pdf", "I");
+		$html .= "</tbody></table>";
+
+		$document->WriteHTML($html);
+
+		$document->WriteHTML("
+        <p style='margin-top:10px;font-size:11px;'>
+            <b>Total Aktivitas Membaca: " . count($data) . "</b>
+        </p>
+    ");
+
+		$document->Output('Data Baca Buku Digital.pdf', 'I');
 	}
+
 }
