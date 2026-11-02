@@ -72,41 +72,70 @@ class Kehadiran extends CI_Controller
 		$this->load->view('footer_view', $this->data);
 	}
 
+
 	public function add()
 	{
+		$id_siswa = (int) $this->input->post('id_siswa');
+		$tanggal = $this->input->post('tanggal', TRUE);
 
-		$tanggal = htmlentities($this->input->post('tanggal', TRUE));
-		$id_siswa = $_COOKIE['dataKehadiran'];
-		$kehadiran = $this->db->query("SELECT * FROM tbl_kehadiran WHERE siswa_id = '" . $id_siswa . "'  AND tgl_kehadiran = '" . $tanggal . "'");
-		$rowKehadiran = $kehadiran->num_rows();
-
-		if ($rowKehadiran == 0) {
-
-			$data = array(
-				'id_kehadiran' => '',
-				'tgl_kehadiran' => $tanggal,
-				'siswa_id' => $id_siswa
-
-			);
-
-			$this->db->insert('tbl_kehadiran', $data);
-			if ($this->$_SESSION['pesan'] == null) {
-				$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-success">
-					<p> Tambah kehadiran telah berhasil !</p>
-					</div></div>');
-			}
-		} else {
-			if ($this->$_SESSION['pesan'] == null) {
-				$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-warning">
-					<p> Data kehadiran sudah ada !</p>
-					</div></div>');
-			}
+		// Validasi data
+		if ($id_siswa <= 0 || !$tanggal || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal)) {
+			echo json_encode([
+				'status' => false,
+				'pesan' => 'Data kehadiran tidak valid.'
+			]);
+			return;
 		}
 
+		// Pastikan siswa terdaftar
+		$siswa = $this->db
+			->get_where('tbl_siswa', ['id_siswa' => $id_siswa])
+			->row_array();
 
+		if (!$siswa) {
+			echo json_encode([
+				'status' => false,
+				'pesan' => 'Data siswa tidak ditemukan.'
+			]);
+			return;
+		}
 
-		redirect(base_url('kehadiran'));
+		// Periksa apakah siswa sudah hadir pada tanggal tersebut
+		$cek = $this->db
+			->get_where('tbl_kehadiran', [
+				'siswa_id' => $id_siswa,
+				'tgl_kehadiran' => $tanggal
+			])
+			->num_rows();
+
+		if ($cek > 0) {
+			echo json_encode([
+				'status' => false,
+				'pesan' => 'Kehadiran siswa sudah tercatat pada tanggal ini.'
+			]);
+			return;
+		}
+
+		// Simpan kehadiran menggunakan tabel yang sudah ada
+		$simpan = $this->db->insert('tbl_kehadiran', [
+			'tgl_kehadiran' => $tanggal,
+			'siswa_id' => $id_siswa
+		]);
+
+		if ($simpan) {
+			echo json_encode([
+				'status' => true,
+				'pesan' => 'Kehadiran berhasil dicatat.',
+				'nama' => $siswa['nama']
+			]);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'pesan' => 'Gagal menyimpan kehadiran.'
+			]);
+		}
 	}
+
 
 	public function edit()
 	{
@@ -285,15 +314,16 @@ class Kehadiran extends CI_Controller
 
 
 
-	public function self_service()
-	{
-		$this->data['title_web'] = 'Self Service Kehadiran';
+	
+public function self_service()
+{
+    $this->data['title_web'] = 'Self Service Kehadiran';
 
-		$this->load->view('header_view', $this->data);
-		$this->load->view('sidebar_view', $this->data);
-		$this->load->view('kehadiran/self_service_view', $this->data);
-		$this->load->view('footer_view', $this->data);
-	}
+    // Tampilkan halaman mandiri tanpa header, sidebar, dan footer aplikasi
+    $this->load->view('kehadiran/self_service_view', $this->data);
+}
+
+
 
 	public function cari_anggota()
 	{
@@ -308,16 +338,25 @@ class Kehadiran extends CI_Controller
 		}
 
 		$anggota = $this->db
-			->select('kode_anggota, nama, jenkel')
+			->select('id_siswa, kode_anggota, nama, jenkel')
 			->from('tbl_siswa')
 			->where('kode_anggota', $kode)
 			->get()
 			->row_array();
 
 		if ($anggota) {
+			// Periksa status kehadiran hari ini
+			$sudah_hadir = $this->db
+				->get_where('tbl_kehadiran', [
+					'siswa_id' => $anggota['id_siswa'],
+					'tgl_kehadiran' => date('Y-m-d')
+				])
+				->num_rows() > 0;
+
 			echo json_encode([
 				'status' => true,
-				'data' => $anggota
+				'data' => $anggota,
+				'sudah_hadir' => $sudah_hadir
 			]);
 		} else {
 			echo json_encode([
@@ -326,6 +365,7 @@ class Kehadiran extends CI_Controller
 			]);
 		}
 	}
+
 
 
 

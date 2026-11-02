@@ -33,9 +33,13 @@
                             </div>
                         </div>
                         <div class="col-sm-3">
-                            <a href="<?= base_url('kehadiran/self_service'); ?>" class="btn btn-success">
-                                <i class="fa fa-user"></i> Self Service Kehadiran
+
+                            <a href="<?= base_url('kehadiran/self_service'); ?>" target="_blank"
+                                rel="noopener noreferrer" class="btn btn-success">
+                                <i class="fa fa-user"></i>
+                                Self Service Kehadiran
                             </a>
+
                         </div>
                     </div>
                     <!-- /.box-header -->
