@@ -29,6 +29,7 @@ $config['base_url'] = (
 ) ? 'https://' : 'http://';
 
 $config['base_url'] .= $_SERVER['HTTP_HOST'];
+
 $config['base_url'] .= preg_replace(
     '@/+$@',
     '',

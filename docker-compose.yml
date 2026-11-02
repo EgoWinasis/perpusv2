@@ -1,17 +1,14 @@
 services:
   web:
-    image: php:7.4-apache
+    build: .
     container_name: ci3_web
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8085:80"
+      - "5173:80"
     volumes:
       - ./:/var/www/html
     environment:
       TZ: Asia/Jakarta
-    command: >
-      bash -c "a2enmod rewrite &&
-      apache2-foreground"
     depends_on:
       - mysql
     networks:
@@ -22,10 +19,10 @@ services:
     container_name: ci3_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: GantiPasswordRoot
+      MYSQL_ROOT_PASSWORD: GantiPasswordRoot123!
       MYSQL_DATABASE: db_perpustakaan
       MYSQL_USER: ci3user
-      MYSQL_PASSWORD: GantiPasswordDatabase
+      MYSQL_PASSWORD: GantiPasswordDB123!
       TZ: Asia/Jakarta
     volumes:
       - mysql_data:/var/lib/mysql
