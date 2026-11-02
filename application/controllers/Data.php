@@ -257,6 +257,12 @@ class Data extends CI_Controller
 		$this->data['title_web'] = 'Cetak Label Buku ';
 		$this->load->view('buku/print_buku');
 	}
+	public function printfullbuku()
+	{
+
+		$this->data['title_web'] = 'Cetak Label Buku ';
+		$this->load->view('buku/print_full_buku');
+	}
 
 	public function katproses()
 	{

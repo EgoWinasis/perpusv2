@@ -6,13 +6,10 @@ $data = explode(",", $data_print);
 
 ?>
 <?php
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "perpus_db";
+$CI =& get_instance();
+$CI->load->database();
 
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
+$conn = $CI->db->conn_id;
 // Check connection
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
