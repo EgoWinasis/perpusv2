@@ -1,13 +1,27 @@
 FROM php:7.4-apache
 
-RUN apt-get update && apt-get install -y \
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Gunakan repository Debian archive untuk base image lama
+RUN set -eux; \
+    sed -i \
+      -e 's/deb.debian.org/archive.debian.org/g' \
+      -e 's/security.debian.org/archive.debian.org/g' \
+      -e '/buster-updates/d' \
+      /etc/apt/sources.list; \
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     libjpeg62-turbo-dev \
     libfreetype6-dev \
     libzip-dev \
     unzip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install \
+    zlib1g-dev \
+    && docker-php-ext-configure gd \
+        --with-freetype \
+        --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" \
         mysqli \
         pdo \
         pdo_mysql \
@@ -20,5 +34,3 @@ RUN apt-get update && apt-get install -y \
 COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
 
 WORKDIR /var/www/html
-
-RUN chown -R www-data:www-data /var/www/html
