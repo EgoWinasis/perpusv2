@@ -7,7 +7,7 @@
     <section class="content-header">
         <h1>
             <i class="fa fa-plus" style="color:green"></i>
-            <?= $title_web; ?>
+            <?= html_escape($title_web); ?>
         </h1>
 
         <ol class="breadcrumb">
@@ -17,7 +17,8 @@
                 </a>
             </li>
             <li class="active">
-                <i class="fa fa-plus"></i>&nbsp; <?= $title_web; ?>
+                <i class="fa fa-plus"></i>&nbsp;
+                <?= html_escape($title_web); ?>
             </li>
         </ol>
     </section>
@@ -46,28 +47,42 @@
                             id="formBukuDigital"
                         >
 
+                            <!-- CSRF -->
+                            <?php if ($this->config->item('csrf_protection')): ?>
+                                <input
+                                    type="hidden"
+                                    name="<?= $this->security->get_csrf_token_name(); ?>"
+                                    value="<?= $this->security->get_csrf_hash(); ?>"
+                                >
+                            <?php endif; ?>
+
                             <div class="row">
 
                                 <!-- KOLOM KIRI -->
                                 <div class="col-sm-6">
 
                                     <div class="form-group">
-                                        <label>Kategori</label>
+                                        <label>
+                                            Kategori
+                                            <span class="text-danger">*</span>
+                                        </label>
 
                                         <select
                                             class="form-control select2"
                                             required
-                                            name="kategori"
+                                            name="id_kategori"
+                                            id="id_kategori"
+                                            style="width:100%;"
                                         >
-                                            <option disabled selected value="">
+                                            <option value="">
                                                 -- Pilih Kategori --
                                             </option>
 
-                                            <?php foreach ($kats as $isi) { ?>
-                                                <option value="<?= $isi['id_kategori']; ?>">
-                                                    <?= $isi['nama_kategori']; ?>
+                                            <?php foreach ($kats as $isi): ?>
+                                                <option value="<?= html_escape($isi['id_kategori']); ?>">
+                                                    <?= html_escape($isi['nama_kategori']); ?>
                                                 </option>
-                                            <?php } ?>
+                                            <?php endforeach; ?>
 
                                         </select>
                                     </div>
@@ -79,18 +94,23 @@
                                             type="text"
                                             class="form-control"
                                             name="isbn"
+                                            id="isbn"
                                             placeholder="Contoh ISBN : 978-602-8123-35-8"
                                         >
                                     </div>
 
                                     <div class="form-group">
-                                        <label>Judul Buku</label>
+                                        <label>
+                                            Judul Buku
+                                            <span class="text-danger">*</span>
+                                        </label>
 
                                         <input
                                             type="text"
                                             class="form-control"
                                             required
                                             name="title"
+                                            id="title"
                                             placeholder="Contoh : Cara Cepat Belajar Pemrograman Web"
                                         >
                                     </div>
@@ -101,30 +121,42 @@
                                 <div class="col-sm-6">
 
                                     <div class="form-group">
-                                        <label>Nama Pengarang</label>
+                                        <label>
+                                            Nama Pengarang
+                                            <span class="text-danger">*</span>
+                                        </label>
 
                                         <input
                                             type="text"
                                             class="form-control"
                                             name="pengarang"
+                                            id="pengarang"
+                                            required
                                             placeholder="Nama Pengarang"
                                         >
                                     </div>
 
                                     <div class="form-group">
-                                        <label>Penerbit</label>
+                                        <label>
+                                            Penerbit
+                                            <span class="text-danger">*</span>
+                                        </label>
 
                                         <input
                                             type="text"
                                             class="form-control"
                                             required
                                             name="penerbit"
+                                            id="penerbit"
                                             placeholder="Nama Penerbit"
                                         >
                                     </div>
 
                                     <div class="form-group">
-                                        <label>Tahun Buku</label>
+                                        <label>
+                                            Tahun Buku
+                                            <span class="text-danger">*</span>
+                                        </label>
 
                                         <input
                                             type="number"
@@ -132,7 +164,8 @@
                                             required
                                             min="1900"
                                             max="<?= date('Y'); ?>"
-                                            name="thn"
+                                            name="thn_buku"
+                                            id="thn_buku"
                                             placeholder="Tahun Buku"
                                         >
                                     </div>
@@ -141,6 +174,7 @@
                                         <label>
                                             File Buku
                                             <small style="color:green">(PDF)</small>
+                                            <span class="text-danger">*</span>
                                         </label>
 
                                         <input
@@ -178,9 +212,11 @@
 
                                 <p id="ukuranFile" style="margin:0;"></p>
 
+                                <p id="infoJumlahPDF" style="margin:5px 0 0;"></p>
+
                             </div>
 
-                            <!-- INFORMASI CROP -->
+                            <!-- INFORMASI PEMROSESAN -->
                             <div class="alert alert-info">
 
                                 <strong>
@@ -194,11 +230,12 @@
                                     <li>Halaman landscape akan dibagi menjadi dua bagian.</li>
                                     <li>Bagian kiri dan kanan disimpan sebagai halaman terpisah.</li>
                                     <li>Gambar dikirim ke server satu per satu.</li>
+                                    <li>Urutan halaman disimpan secara otomatis.</li>
                                 </ul>
 
                             </div>
 
-                            <!-- PROGRESS DI FORM -->
+                            <!-- PROGRESS -->
                             <div id="areaProgress" style="display:none;">
 
                                 <div class="form-group">
@@ -237,12 +274,6 @@
                                     <i class="fa fa-arrow-left"></i>
                                     Kembali
                                 </a>
-
-                                <input
-                                    type="hidden"
-                                    name="tambah"
-                                    value="tambah"
-                                >
 
                                 <button
                                     type="submit"
@@ -369,13 +400,15 @@
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    const form = document.getElementById('formBukuDigital');
+    'use strict';
 
+    const form = document.getElementById('formBukuDigital');
     const fileInput = document.getElementById('fileBuku');
 
     const informasiFile = document.getElementById('informasiFile');
     const namaFile = document.getElementById('namaFile');
     const ukuranFile = document.getElementById('ukuranFile');
+    const infoJumlahPDF = document.getElementById('infoJumlahPDF');
 
     const areaProgress = document.getElementById('areaProgress');
     const statusProses = document.getElementById('statusProses');
@@ -392,25 +425,75 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnSubmit = document.getElementById('btnSubmit');
     const btnKembali = document.getElementById('btnKembali');
 
+    const URL_BACKEND = <?= json_encode(base_url('data/prosesdigital')); ?>;
+    const URL_REDIRECT = <?= json_encode(base_url('data/bukudigital')); ?>;
+
     let sedangProses = false;
+    let pdfAktif = null;
 
-    const URL_BACKEND = '<?= base_url("data/prosesdigital"); ?>';
+    if (typeof pdfjsLib === 'undefined') {
+        alert('PDF.js gagal dimuat. Periksa koneksi internet Anda.');
+        return;
+    }
 
-    // Konfigurasi PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc =
         'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+
+    // ======================================
+    // CSRF
+    // ======================================
+
+    function ambilInputCSRF() {
+        return form.querySelector('input[name^="csrf_"]');
+    }
+
+    function tambahkanCSRF(data) {
+
+        const csrfInput = ambilInputCSRF();
+
+        if (csrfInput) {
+            data.set(csrfInput.name, csrfInput.value);
+        }
+
+        return data;
+    }
+
+    function perbaruiCSRF(result) {
+
+        if (!result.csrf_name || !result.csrf_hash) {
+            return;
+        }
+
+        let csrfInput = form.querySelector(
+            'input[name^="csrf_"]'
+        );
+
+        if (!csrfInput) {
+            csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            form.appendChild(csrfInput);
+        }
+
+        csrfInput.name = result.csrf_name;
+        csrfInput.value = result.csrf_hash;
+    }
 
 
     // ======================================
     // INFORMASI FILE
     // ======================================
 
-    fileInput.addEventListener('change', function () {
+    fileInput.addEventListener('change', async function () {
 
         const file = this.files[0];
 
+        informasiFile.style.display = 'none';
+        infoJumlahPDF.textContent = '';
+
+        pdfAktif = null;
+
         if (!file) {
-            informasiFile.style.display = 'none';
             return;
         }
 
@@ -422,8 +505,6 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('File harus menggunakan format PDF.');
 
             this.value = '';
-
-            informasiFile.style.display = 'none';
 
             return;
         }
@@ -437,6 +518,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
         informasiFile.style.display = 'block';
 
+        infoJumlahPDF.textContent = 'Sedang membaca jumlah halaman PDF...';
+
+        try {
+
+            const buffer = await file.arrayBuffer();
+
+            pdfAktif = await pdfjsLib.getDocument({
+                data: new Uint8Array(buffer)
+            }).promise;
+
+            infoJumlahPDF.textContent =
+                'Jumlah halaman PDF: ' + pdfAktif.numPages;
+
+        } catch (error) {
+
+            console.error('PDF ERROR:', error);
+
+            alert(
+                'File PDF tidak dapat dibaca. Pastikan file tidak rusak atau diproteksi password.'
+            );
+
+            this.value = '';
+            pdfAktif = null;
+
+            informasiFile.style.display = 'none';
+        }
+
     });
 
 
@@ -449,26 +557,23 @@ document.addEventListener('DOMContentLoaded', function () {
         overlay.style.display = 'flex';
 
         document.body.style.overflow = 'hidden';
-
     }
-
 
     function sembunyikanLoading() {
 
         overlay.style.display = 'none';
 
         document.body.style.overflow = '';
-
     }
 
 
     // ======================================
-    // UPDATE PROGRESS
+    // PROGRESS
     // ======================================
 
-    function updateProgress(persen, status, halaman) {
+    function updateProgress(persen, status, detail) {
 
-        persen = Math.max(0, Math.min(100, persen));
+        persen = Math.max(0, Math.min(100, Math.round(persen)));
 
         loadingProgress.style.width = persen + '%';
         loadingProgress.textContent = persen + '%';
@@ -480,16 +585,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         statusProses.textContent = status;
 
-        if (halaman) {
-            loadingPage.textContent = halaman;
-            jumlahHalaman.textContent = halaman;
+        if (detail !== undefined) {
+            loadingPage.textContent = detail;
+            jumlahHalaman.textContent = detail;
         }
-
     }
 
 
     // ======================================
-    // CANVAS MENJADI PNG
+    // CANVAS KE PNG
     // ======================================
 
     function canvasToBlob(canvas) {
@@ -498,24 +602,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
             canvas.toBlob(function (blob) {
 
-                if (blob) {
-                    resolve(blob);
-                } else {
+                if (!blob) {
                     reject(new Error('Gagal membuat gambar PNG.'));
+                    return;
                 }
+
+                resolve(blob);
 
             }, 'image/png');
 
         });
-
     }
 
 
     // ======================================
-    // REQUEST KE BACKEND
+    // REQUEST AJAX
     // ======================================
 
     async function requestJSON(data) {
+
+        tambahkanCSRF(data);
+
+        const action = data.get('canvas_action');
+        const nomor = data.get('nomor');
+
+        console.log('REQUEST DIGITAL:', {
+            action: action,
+            nomor: nomor,
+            folder: data.get('folder')
+        });
 
         const response = await fetch(URL_BACKEND, {
             method: 'POST',
@@ -525,6 +640,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const responseText = await response.text();
 
+        console.log('HTTP STATUS:', response.status);
+        console.log('SERVER RESPONSE:', responseText);
+
         let result;
 
         try {
@@ -533,49 +651,77 @@ document.addEventListener('DOMContentLoaded', function () {
 
         } catch (error) {
 
-            console.error('Respons server:', responseText);
-
             throw new Error(
                 'HTTP ' + response.status +
-                '. Respons server tidak valid. Periksa log CodeIgniter.'
+                ': Respons server bukan JSON: ' +
+                responseText.substring(0, 500)
             );
 
         }
 
+        perbaruiCSRF(result);
+
         if (!response.ok || !result.status) {
 
             throw new Error(
-                result.message || 'Terjadi kesalahan pada server.'
+                'HTTP ' + response.status + ': ' +
+                (result.pesan || result.message ||
+                    'Terjadi kesalahan pada server.')
             );
 
         }
 
         return result;
-
     }
 
 
     // ======================================
-    // TAMBAHKAN TOKEN CSRF JIKA AKTIF
+    // UPLOAD SATU GAMBAR
     // ======================================
 
-    function tambahkanCSRF(data) {
+    async function uploadHalaman(folder, nomor, blob) {
 
-        const csrfInput = form.querySelector(
-            'input[name^="csrf_"]'
+        const data = new FormData();
+
+        data.append('canvas_action', 'upload');
+        data.append('folder', folder);
+        data.append('nomor', nomor);
+
+        data.append(
+            'halaman',
+            blob,
+            nomor + '.png'
         );
 
-        if (csrfInput && !data.has(csrfInput.name)) {
+        await requestJSON(data);
+    }
 
-            data.append(
-                csrfInput.name,
-                csrfInput.value
-            );
 
+    // ======================================
+    // BATAL UPLOAD
+    // ======================================
+
+    async function batalkanUpload(folder) {
+
+        if (!folder) {
+            return;
         }
 
-        return data;
+        try {
 
+            const data = new FormData();
+
+            data.append('canvas_action', 'batal');
+            data.append('folder', folder);
+
+            await requestJSON(data);
+
+            console.log('Upload sementara berhasil dibatalkan.');
+
+        } catch (error) {
+
+            console.error('Gagal membersihkan folder:', error);
+        }
     }
 
 
@@ -591,6 +737,10 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        if (!form.reportValidity()) {
+            return;
+        }
+
         const file = fileInput.files[0];
 
         if (!file) {
@@ -598,29 +748,26 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Silakan pilih file PDF.');
 
             return;
-
         }
 
-        if (!file.name.toLowerCase().endsWith('.pdf')) {
+        if (!pdfAktif) {
 
-            alert('File harus berformat PDF.');
+            alert('PDF belum berhasil dibaca. Silakan pilih ulang file PDF.');
 
             return;
-
         }
 
         sedangProses = true;
 
         btnSubmit.disabled = true;
-
-        btnKembali.classList.add('disabled');
+        btnKembali.style.pointerEvents = 'none';
 
         areaProgress.style.display = 'block';
 
         tampilkanLoading();
 
-
         let folder = null;
+        let berhasilDisimpan = false;
 
         try {
 
@@ -632,81 +779,90 @@ document.addEventListener('DOMContentLoaded', function () {
 
             updateProgress(
                 1,
-                'Membuka file PDF...',
-                'Menyiapkan dokumen'
+                'Mempersiapkan file PDF...',
+                'Menyiapkan dokumen.'
             );
 
-            const arrayBuffer = await file.arrayBuffer();
-
-            const pdf = await pdfjsLib.getDocument({
-                data: new Uint8Array(arrayBuffer)
-            }).promise;
-
-            const totalPDF = pdf.numPages;
-
-            if (totalPDF < 1) {
-                throw new Error('PDF tidak memiliki halaman.');
-            }
+            const totalPDF = pdfAktif.numPages;
 
             // ==================================
-            // 2. MENYIAPKAN METADATA
+            // 2. MEMULAI UPLOAD
             // ==================================
 
             loadingTitle.textContent = 'Menyiapkan Penyimpanan';
 
-            let metadata = new FormData(form);
-
-            metadata.delete('lampiran');
-
-            metadata.delete('tambah');
-
-            metadata.append('canvas_action', 'mulai');
-
-            metadata.append('jenis_proses', 'tambah');
-
-            metadata = tambahkanCSRF(metadata);
-
             updateProgress(
                 3,
                 'Membuat folder penyimpanan...',
-                'Menyiapkan ' + totalPDF + ' halaman PDF'
+                'Total halaman PDF: ' + totalPDF
             );
 
-            const mulai = await requestJSON(metadata);
+            const dataMulai = new FormData();
 
-            folder = mulai.folder;
+            dataMulai.append('canvas_action', 'mulai');
+
+            const hasilMulai = await requestJSON(dataMulai);
+
+            folder = hasilMulai.folder;
 
             if (!folder) {
-                throw new Error('Server tidak mengembalikan nama folder.');
+                throw new Error('Server tidak mengembalikan nama folder upload.');
             }
+
+            console.log('FOLDER UPLOAD:', folder);
 
 
             // ==================================
-            // 3. PROSES PDF SATU PER SATU
+            // 3. RENDER DAN UPLOAD PDF
             // ==================================
 
             let nomorHasil = 0;
 
-            // Maksimal sementara untuk progres selama rendering
-            const progresRender = 90;
+            /*
+             * Hitung jumlah gambar terlebih dahulu.
+             * Landscape = 2 gambar.
+             * Portrait = 1 gambar.
+             */
+
+            const jenisHalaman = [];
+
+            let totalGambar = 0;
+
+            for (let i = 1; i <= totalPDF; i++) {
+
+                const page = await pdfAktif.getPage(i);
+
+                const viewport = page.getViewport({
+                    scale: 1
+                });
+
+                const landscape = viewport.width > viewport.height;
+
+                jenisHalaman.push(landscape ? 2 : 1);
+
+                totalGambar += landscape ? 2 : 1;
+
+                page.cleanup();
+            }
+
+            console.log('TOTAL GAMBAR:', totalGambar);
+
+
+            // ==================================
+            // 4. PROSES SETIAP HALAMAN
+            // ==================================
 
             for (let halaman = 1; halaman <= totalPDF; halaman++) {
 
-                loadingTitle.textContent = 'Memproses Halaman Buku';
-
-                loadingStatus.textContent =
-                    'Membaca halaman ' + halaman + ' dari ' + totalPDF;
-
-                const page = await pdf.getPage(halaman);
+                const page = await pdfAktif.getPage(halaman);
 
                 const viewport = page.getViewport({
-                    scale: 1.8
+                    scale: 1.3
                 });
 
                 const canvas = document.createElement('canvas');
 
                 canvas.width = Math.ceil(viewport.width);
-
                 canvas.height = Math.ceil(viewport.height);
 
                 const context = canvas.getContext('2d', {
@@ -718,24 +874,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     viewport: viewport
                 }).promise;
 
-
-                // ==================================
-                // 4. CROP LANDSCAPE
-                // ==================================
-
                 const hasilCanvas = [];
+
+                // ==================================
+                // LANDSCAPE: CROP KIRI DAN KANAN
+                // ==================================
 
                 if (canvas.width > canvas.height) {
 
                     const halfWidth = Math.floor(canvas.width / 2);
 
-                    // BAGIAN KIRI
+                    // KIRI
                     const kiri = document.createElement('canvas');
 
                     kiri.width = halfWidth;
                     kiri.height = canvas.height;
 
-                    kiri.getContext('2d').drawImage(
+                    kiri.getContext('2d', {
+                        alpha: false
+                    }).drawImage(
                         canvas,
                         0,
                         0,
@@ -750,14 +907,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     hasilCanvas.push(kiri);
 
 
-                    // BAGIAN KANAN
+                    // KANAN
                     const kanan = document.createElement('canvas');
 
                     kanan.width = canvas.width - halfWidth;
-
                     kanan.height = canvas.height;
 
-                    kanan.getContext('2d').drawImage(
+                    kanan.getContext('2d', {
+                        alpha: false
+                    }).drawImage(
                         canvas,
                         halfWidth,
                         0,
@@ -773,14 +931,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 } else {
 
-                    // PORTRAIT TIDAK DIPOTONG
+                    // PORTRAIT: TETAP UTUH
                     hasilCanvas.push(canvas);
 
                 }
 
 
                 // ==================================
-                // 5. KIRIM SATU GAMBAR PER REQUEST
+                // 5. UPLOAD PNG SECARA BERURUTAN
                 // ==================================
 
                 for (let i = 0; i < hasilCanvas.length; i++) {
@@ -789,43 +947,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const blob = await canvasToBlob(hasilCanvas[i]);
 
-                    const uploadData = new FormData();
-
-                    uploadData.append('canvas_action', 'upload');
-
-                    uploadData.append('folder', folder);
-
-                    uploadData.append('nomor', nomorHasil);
-
-                    uploadData.append(
-                        'halaman',
-                        blob,
-                        nomorHasil + '.png'
-                    );
-
-                    tambahkanCSRF(uploadData);
-
                     loadingTitle.textContent = 'Mengirim Halaman Buku';
 
-                    const persen = Math.round(
-                        3 + (nomorHasil / (totalPDF * 2)) * progresRender
-                    );
-
                     updateProgress(
-                        Math.min(persen, 93),
-                        'Mengirim gambar ke server...',
-                        'PDF halaman ' + halaman +
-                        ' dari ' + totalPDF +
-                        ' | Gambar ke-' + nomorHasil
+                        3 + (nomorHasil / totalGambar) * 90,
+                        'Mengunggah halaman PNG...',
+                        'Gambar ' + nomorHasil + ' dari ' + totalGambar +
+                        ' | Halaman PDF ' + halaman + ' dari ' + totalPDF
                     );
 
-                    // Tunggu upload selesai sebelum kirim berikutnya
-                    await requestJSON(uploadData);
+                    await uploadHalaman(
+                        folder,
+                        nomorHasil,
+                        blob
+                    );
 
-                    // Bersihkan canvas setelah upload
+                    // Bersihkan canvas hasil.
                     hasilCanvas[i].width = 0;
                     hasilCanvas[i].height = 0;
-
                 }
 
                 canvas.width = 0;
@@ -837,52 +976,78 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
             // ==================================
-            // 6. SIMPAN DATA DATABASE
+            // 6. SIMPAN DATA BUKU
             // ==================================
 
             loadingTitle.textContent = 'Menyimpan Data Buku';
 
             updateProgress(
                 96,
-                'Memeriksa gambar dan menyimpan database...',
-                'Total gambar: ' + nomorHasil
+                'Menyimpan informasi buku ke database...',
+                'Total gambar berhasil diunggah: ' + nomorHasil
             );
 
-            const selesaiData = new FormData(form);
+            const dataSelesai = new FormData();
 
-            selesaiData.delete('lampiran');
+            dataSelesai.append('canvas_action', 'selesai');
 
-            selesaiData.append('canvas_action', 'selesai');
+            dataSelesai.append('folder', folder);
 
-            selesaiData.append('folder', folder);
+            dataSelesai.append('total_hal', nomorHasil);
 
-            selesaiData.append('total_hal', nomorHasil);
+            dataSelesai.append(
+                'id_kategori',
+                document.getElementById('id_kategori').value
+            );
 
-            selesaiData.append('jenis_proses', 'tambah');
+            dataSelesai.append(
+                'isbn',
+                document.getElementById('isbn').value
+            );
 
-            tambahkanCSRF(selesaiData);
+            dataSelesai.append(
+                'title',
+                document.getElementById('title').value
+            );
 
-            const selesai = await requestJSON(selesaiData);
+            dataSelesai.append(
+                'pengarang',
+                document.getElementById('pengarang').value
+            );
+
+            dataSelesai.append(
+                'penerbit',
+                document.getElementById('penerbit').value
+            );
+
+            dataSelesai.append(
+                'thn_buku',
+                document.getElementById('thn_buku').value
+            );
+
+            const hasilSelesai = await requestJSON(dataSelesai);
+
+            berhasilDisimpan = true;
 
 
             // ==================================
             // 7. BERHASIL
             // ==================================
 
+            loadingTitle.textContent = 'Berhasil!';
+
             updateProgress(
                 100,
-                'Buku digital berhasil disimpan.',
+                hasilSelesai.pesan || 'Buku digital berhasil disimpan.',
                 'Total halaman tersimpan: ' + nomorHasil
             );
 
-            loadingTitle.textContent = 'Berhasil!';
-
-            loadingStatus.textContent = selesai.message;
+            loadingStatus.textContent =
+                hasilSelesai.pesan || 'Buku digital berhasil disimpan.';
 
             setTimeout(function () {
 
-                window.location.href =
-                    '<?= base_url("data/bukudigital"); ?>';
+                window.location.href = URL_REDIRECT;
 
             }, 1200);
 
@@ -891,33 +1056,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             console.error('ERROR PDF DIGITAL:', error);
 
-            // ==================================
-            // HAPUS FOLDER JIKA GAGAL
-            // ==================================
+            if (folder && !berhasilDisimpan) {
 
-            if (folder) {
-
-                const hapusData = new FormData();
-
-                hapusData.append('canvas_action', 'batal');
-
-                hapusData.append('folder', folder);
-
-                tambahkanCSRF(hapusData);
-
-                try {
-
-                    await requestJSON(hapusData);
-
-                } catch (hapusError) {
-
-                    console.error(
-                        'Gagal membersihkan folder:',
-                        hapusError
-                    );
-
-                }
-
+                await batalkanUpload(folder);
             }
 
             sembunyikanLoading();
@@ -931,14 +1072,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             btnSubmit.disabled = false;
 
-            btnKembali.classList.remove('disabled');
+            btnKembali.style.pointerEvents = 'auto';
 
             loadingTitle.textContent = 'Proses Gagal';
 
             updateProgress(
                 0,
-                'Silakan periksa file dan koneksi server.',
-                ''
+                'Silakan periksa data dan file PDF.',
+                'Silakan coba kembali.'
             );
 
         }

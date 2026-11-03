@@ -450,11 +450,24 @@ class Data extends CI_Controller
 	 * Upload halaman PNG satu per satu dari PDF.js.
 	 * Tidak membutuhkan Imagick atau Spatie PDF-to-Image.
 	 */
+
 	public function prosesdigital()
 	{
+		/*
+		 * ==========================================
+		 * CEK LOGIN
+		 * ==========================================
+		 */
+
 		if (!$this->session->userdata('masuk_perpus')) {
+
 			if ($this->input->is_ajax_request()) {
-				return $this->_digitalJson(false, 'Sesi login berakhir. Silakan login kembali.', [], 401);
+				return $this->_digitalJson(
+					false,
+					'Sesi login berakhir. Silakan login kembali.',
+					[],
+					401
+				);
 			}
 
 			redirect('login');
@@ -464,181 +477,432 @@ class Data extends CI_Controller
 		$action = $this->input->post('canvas_action', true);
 
 		/*
+		 * ==========================================
 		 * PROSES AJAX PDF.JS
+		 * ==========================================
 		 */
+
 		if ($action) {
+
 			try {
+
 				$basePath = FCPATH . 'assets_style/image/buku/lampiran/';
 
-				if (!is_dir($basePath) && !mkdir($basePath, 0755, true)) {
-					throw new Exception('Folder penyimpanan buku digital tidak dapat dibuat.');
+				/*
+				 * BUAT FOLDER UTAMA
+				 */
+
+				if (!is_dir($basePath)) {
+
+					if (!mkdir($basePath, 0755, true) && !is_dir($basePath)) {
+						throw new Exception(
+							'Folder penyimpanan buku digital tidak dapat dibuat.'
+						);
+					}
 				}
 
-				/*
-				 * MULAI UPLOAD
-				 * Membuat folder sementara untuk satu proses upload.
-				 */
-				if ($action === 'mulai') {
-					$folderAktif = $this->session->userdata('digital_canvas_folder');
+				if (!is_writable($basePath)) {
+					throw new Exception(
+						'Folder penyimpanan buku digital tidak memiliki izin tulis.'
+					);
+				}
 
-					// Bersihkan folder proses sebelumnya yang masih tertinggal.
+
+				/*
+				 * ======================================
+				 * 1. MULAI UPLOAD
+				 * ======================================
+				 */
+
+				if ($action === 'mulai') {
+
+					$folderAktif = $this->session->userdata(
+						'digital_canvas_folder'
+					);
+
+					// Bersihkan folder proses sebelumnya milik session.
 					if ($folderAktif) {
 						$this->_hapusFolderDigital($folderAktif);
 					}
 
 					$folder = 'digital_' . bin2hex(random_bytes(12));
+
 					$folderPath = $basePath . $folder;
 
 					if (!mkdir($folderPath, 0755, true)) {
-						throw new Exception('Gagal membuat folder sementara.');
+						throw new Exception(
+							'Gagal membuat folder sementara.'
+						);
 					}
 
-					$this->session->set_userdata('digital_canvas_folder', $folder);
-					$this->session->set_userdata('digital_canvas_nomor', 0);
+					if (!is_writable($folderPath)) {
+						$this->_hapusFolderDigital($folder);
 
-					return $this->_digitalJson(true, 'Folder upload berhasil dibuat.', [
-						'folder' => $folder
+						throw new Exception(
+							'Folder sementara tidak memiliki izin tulis.'
+						);
+					}
+
+					$this->session->set_userdata([
+						'digital_canvas_folder' => $folder,
+						'digital_canvas_nomor' => 0
 					]);
+
+					return $this->_digitalJson(
+						true,
+						'Folder upload berhasil dibuat.',
+						[
+							'folder' => $folder
+						]
+					);
 				}
 
+
 				/*
-				 * VALIDASI FOLDER SESSION
+				 * ======================================
+				 * 2. VALIDASI FOLDER SESSION
+				 * ======================================
 				 */
-				$folder = $this->session->userdata('digital_canvas_folder');
+
+				$folder = $this->session->userdata(
+					'digital_canvas_folder'
+				);
 
 				if (
-					!$folder ||
+					empty($folder) ||
 					!preg_match('/^digital_[a-f0-9]{24}$/', $folder)
 				) {
-					throw new Exception('Folder upload tidak valid atau sesi upload sudah berakhir.');
+					throw new Exception(
+						'Folder upload tidak valid atau sesi upload sudah berakhir.'
+					);
 				}
 
 				$folderPath = $basePath . $folder;
 
 				if (!is_dir($folderPath)) {
-					throw new Exception('Folder upload tidak ditemukan.');
+					throw new Exception(
+						'Folder upload tidak ditemukan.'
+					);
 				}
 
+
 				/*
-				 * UPLOAD SATU HALAMAN PNG
+				 * ======================================
+				 * 3. UPLOAD SATU HALAMAN PNG
+				 * ======================================
 				 */
+
 				if ($action === 'upload') {
+
 					if (!isset($_FILES['halaman'])) {
-						throw new Exception('File halaman tidak ditemukan.');
+						throw new Exception(
+							'File halaman tidak ditemukan.'
+						);
 					}
 
 					$nomor = (int) $this->input->post('nomor', true);
-					$nomorTerakhir = (int) $this->session->userdata('digital_canvas_nomor');
 
-					if ($nomor < 1 || $nomor !== ($nomorTerakhir + 1)) {
-						throw new Exception('Urutan halaman tidak valid.');
+					$nomorTerakhir = (int) $this->session->userdata(
+						'digital_canvas_nomor'
+					);
+
+					if (
+						$nomor < 1 ||
+						$nomor !== ($nomorTerakhir + 1)
+					) {
+						throw new Exception(
+							'Urutan halaman tidak valid. Nomor berikutnya seharusnya ' .
+							($nomorTerakhir + 1) . '.'
+						);
 					}
 
 					$file = $_FILES['halaman'];
 
 					if ($file['error'] !== UPLOAD_ERR_OK) {
-						throw new Exception('Upload halaman gagal. Kode error: ' . $file['error']);
+
+						$pesanError = [
+							UPLOAD_ERR_INI_SIZE =>
+								'Ukuran file melebihi batas upload PHP.',
+
+							UPLOAD_ERR_FORM_SIZE =>
+								'Ukuran file melebihi batas form.',
+
+							UPLOAD_ERR_PARTIAL =>
+								'File hanya terupload sebagian.',
+
+							UPLOAD_ERR_NO_FILE =>
+								'Tidak ada file yang diupload.',
+
+							UPLOAD_ERR_NO_TMP_DIR =>
+								'Folder temporary PHP tidak ditemukan.',
+
+							UPLOAD_ERR_CANT_WRITE =>
+								'Gagal menulis file ke penyimpanan.',
+
+							UPLOAD_ERR_EXTENSION =>
+								'Upload dihentikan oleh ekstensi PHP.'
+						];
+
+						$pesan = isset($pesanError[$file['error']])
+							? $pesanError[$file['error']]
+							: 'Upload halaman gagal. Kode error: ' . $file['error'];
+
+						throw new Exception($pesan);
 					}
 
 					if (!is_uploaded_file($file['tmp_name'])) {
-						throw new Exception('File upload tidak valid.');
+						throw new Exception(
+							'File upload tidak valid.'
+						);
 					}
 
-					// Validasi MIME dan ekstensi PNG.
+					/*
+					 * VALIDASI MIME
+					 */
+
+					if (!function_exists('finfo_open')) {
+						throw new Exception(
+							'Ekstensi PHP Fileinfo belum aktif.'
+						);
+					}
+
 					$finfo = finfo_open(FILEINFO_MIME_TYPE);
+
+					if (!$finfo) {
+						throw new Exception(
+							'Gagal memeriksa tipe file.'
+						);
+					}
+
 					$mime = finfo_file($finfo, $file['tmp_name']);
+
 					finfo_close($finfo);
 
 					if ($mime !== 'image/png') {
-						throw new Exception('File harus berupa gambar PNG.');
+						throw new Exception(
+							'File harus berupa gambar PNG.'
+						);
 					}
+
+					/*
+					 * VALIDASI GAMBAR
+					 */
 
 					$infoGambar = getimagesize($file['tmp_name']);
 
-					if (!$infoGambar || $infoGambar[2] !== IMAGETYPE_PNG) {
-						throw new Exception('Format gambar PNG tidak valid.');
+					if (
+						!$infoGambar ||
+						$infoGambar[2] !== IMAGETYPE_PNG
+					) {
+						throw new Exception(
+							'Format gambar PNG tidak valid.'
+						);
 					}
 
+					/*
+					 * SIMPAN FILE
+					 */
+
 					$namaFile = $nomor . '.png';
+
 					$tujuan = $folderPath . DIRECTORY_SEPARATOR . $namaFile;
 
 					if (!move_uploaded_file($file['tmp_name'], $tujuan)) {
-						throw new Exception('Gagal menyimpan halaman PNG.');
+						throw new Exception(
+							'Gagal menyimpan halaman PNG.'
+						);
 					}
 
-					$this->session->set_userdata('digital_canvas_nomor', $nomor);
+					/*
+					 * UPDATE NOMOR SESSION SETELAH FILE BERHASIL DISIMPAN
+					 */
 
-					return $this->_digitalJson(true, 'Halaman berhasil diupload.', [
-						'nomor' => $nomor
-					]);
+					$this->session->set_userdata(
+						'digital_canvas_nomor',
+						$nomor
+					);
+
+					return $this->_digitalJson(
+						true,
+						'Halaman berhasil diupload.',
+						[
+							'nomor' => $nomor
+						]
+					);
 				}
 
+
 				/*
-				 * BATAL UPLOAD
+				 * ======================================
+				 * 4. BATAL UPLOAD
+				 * ======================================
 				 */
+
 				if ($action === 'batal') {
-					$this->_hapusFolderDigital($folder);
 
-					$this->session->unset_userdata('digital_canvas_folder');
-					$this->session->unset_userdata('digital_canvas_nomor');
+					$hapus = $this->_hapusFolderDigital($folder);
 
-					return $this->_digitalJson(true, 'Upload dibatalkan.');
+					$this->session->unset_userdata([
+						'digital_canvas_folder',
+						'digital_canvas_nomor'
+					]);
+
+					return $this->_digitalJson(
+						true,
+						'Upload dibatalkan.',
+						[
+							'folder_dihapus' => (bool) $hapus
+						]
+					);
 				}
 
+
 				/*
-				 * SELESAIKAN UPLOAD DAN SIMPAN DATABASE
+				 * ======================================
+				 * 5. SELESAI UPLOAD
+				 * ======================================
 				 */
+
 				if ($action === 'selesai') {
-					$totalHalaman = (int) $this->session->userdata('digital_canvas_nomor');
+
+					$totalHalaman = (int) $this->session->userdata(
+						'digital_canvas_nomor'
+					);
 
 					if ($totalHalaman < 1) {
-						throw new Exception('Belum ada halaman buku yang berhasil diupload.');
+						throw new Exception(
+							'Belum ada halaman buku yang berhasil diupload.'
+						);
 					}
 
-					// Pastikan file tersimpan lengkap dan berurutan.
+					/*
+					 * VALIDASI SEMUA FILE
+					 */
+
 					for ($i = 1; $i <= $totalHalaman; $i++) {
-						if (!is_file($folderPath . DIRECTORY_SEPARATOR . $i . '.png')) {
-							throw new Exception('Halaman ke-' . $i . ' tidak ditemukan.');
+
+						$fileHalaman = $folderPath .
+							DIRECTORY_SEPARATOR .
+							$i . '.png';
+
+						if (!is_file($fileHalaman)) {
+							throw new Exception(
+								'Halaman ke-' . $i . ' tidak ditemukan.'
+							);
 						}
 					}
 
-					$idBuku = (int) $this->input->post('id_buku', true);
-					$isEdit = $idBuku > 0;
+					/*
+					 * VALIDASI KATEGORI
+					 */
 
-					$kategoriInput = $this->input->post('id_kategori', true);
+					$kategoriInput = $this->input->post(
+						'id_kategori',
+						true
+					);
 
-					// Mendukung input berupa ID kategori maupun kode kategori.
+					if ($kategoriInput === null || $kategoriInput === '') {
+						throw new Exception(
+							'Kategori buku wajib dipilih.'
+						);
+					}
+
 					if (is_numeric($kategoriInput)) {
+
 						$kategori = $this->db
-							->get_where('tbl_kategori', ['id_kategori' => (int) $kategoriInput])
+							->get_where(
+								'tbl_kategori',
+								[
+									'id_kategori' => (int) $kategoriInput
+								]
+							)
 							->row();
+
 					} else {
+
 						$kategori = $this->db
-							->get_where('tbl_kategori', ['kode_kategori' => $kategoriInput])
+							->get_where(
+								'tbl_kategori',
+								[
+									'kode_kategori' => $kategoriInput
+								]
+							)
 							->row();
 					}
 
 					if (!$kategori) {
-						throw new Exception('Kategori buku tidak ditemukan.');
+						throw new Exception(
+							'Kategori buku tidak ditemukan.'
+						);
 					}
 
-					$isbn = trim($this->input->post('isbn', true));
-					$judul = trim($this->input->post('title', true));
-					$pengarang = trim($this->input->post('pengarang', true));
-					$penerbit = trim($this->input->post('penerbit', true));
-					$tahun = trim($this->input->post('thn_buku', true));
+					/*
+					 * AMBIL DATA FORM
+					 */
+
+					$idBuku = (int) $this->input->post(
+						'id_buku',
+						true
+					);
+
+					$isEdit = $idBuku > 0;
+
+					$isbn = trim(
+						(string) $this->input->post('isbn', true)
+					);
+
+					$judul = trim(
+						(string) $this->input->post('title', true)
+					);
+
+					$pengarang = trim(
+						(string) $this->input->post('pengarang', true)
+					);
+
+					$penerbit = trim(
+						(string) $this->input->post('penerbit', true)
+					);
+
+					$tahun = trim(
+						(string) $this->input->post('thn_buku', true)
+					);
+
+					/*
+					 * VALIDASI INPUT
+					 */
 
 					if ($judul === '') {
-						throw new Exception('Judul buku wajib diisi.');
+						throw new Exception(
+							'Judul buku wajib diisi.'
+						);
 					}
 
 					if ($pengarang === '') {
-						throw new Exception('Nama pengarang wajib diisi.');
+						throw new Exception(
+							'Nama pengarang wajib diisi.'
+						);
 					}
 
 					if ($penerbit === '') {
-						throw new Exception('Nama penerbit wajib diisi.');
+						throw new Exception(
+							'Nama penerbit wajib diisi.'
+						);
 					}
+
+					if (
+						$tahun === '' ||
+						!ctype_digit($tahun) ||
+						(int) $tahun < 1900 ||
+						(int) $tahun > (int) date('Y')
+					) {
+						throw new Exception(
+							'Tahun buku tidak valid.'
+						);
+					}
+
+					/*
+					 * DATA DATABASE
+					 */
 
 					$data = [
 						'id_kategori' => $kategori->id_kategori,
@@ -651,86 +915,180 @@ class Data extends CI_Controller
 						'lampiran' => $folder
 					];
 
+					/*
+					 * ==================================
+					 * SIMPAN DATABASE DENGAN TRANSAKSI
+					 * ==================================
+					 */
+
+					$folderLama = null;
+
+					$this->db->trans_begin();
+
 					if ($isEdit) {
+
 						$bukuLama = $this->db
-							->get_where('tbl_buku_digital', ['id_buku' => $idBuku])
+							->get_where(
+								'tbl_buku_digital',
+								[
+									'id_buku' => $idBuku
+								]
+							)
 							->row();
 
 						if (!$bukuLama) {
-							throw new Exception('Data buku yang akan diedit tidak ditemukan.');
+
+							$this->db->trans_rollback();
+
+							throw new Exception(
+								'Data buku yang akan diedit tidak ditemukan.'
+							);
 						}
 
-						$this->db->where('id_buku', $idBuku);
-						$berhasil = $this->db->update('tbl_buku_digital', $data);
+						$folderLama = $bukuLama->lampiran;
 
-						if (!$berhasil) {
-							throw new Exception('Gagal memperbarui data buku.');
-						}
-
-						// Hapus folder lama setelah database berhasil diperbarui.
-						if (
-							!empty($bukuLama->lampiran) &&
-							$bukuLama->lampiran !== $folder
-						) {
-							$this->_hapusFolderDigital($bukuLama->lampiran);
-						}
+						$this->db
+							->where('id_buku', $idBuku)
+							->update('tbl_buku_digital', $data);
 
 						$pesan = 'Data buku digital berhasil diperbarui.';
+
 					} else {
+
 						$data['kode_buku'] = $this->_buatKodeDigital();
+
 						$data['tgl_masuk'] = date('Y-m-d');
 
-						$berhasil = $this->db->insert('tbl_buku_digital', $data);
-
-						if (!$berhasil) {
-							throw new Exception('Gagal menyimpan data buku.');
-						}
+						$this->db->insert(
+							'tbl_buku_digital',
+							$data
+						);
 
 						$pesan = 'Buku digital berhasil ditambahkan.';
 					}
 
-					$this->session->unset_userdata('digital_canvas_folder');
-					$this->session->unset_userdata('digital_canvas_nomor');
+					/*
+					 * CEK TRANSAKSI
+					 */
 
-					return $this->_digitalJson(true, $pesan, [
-						'total_hal' => $totalHalaman
+					if ($this->db->trans_status() === false) {
+
+						$this->db->trans_rollback();
+
+						throw new Exception(
+							'Gagal menyimpan data buku ke database.'
+						);
+					}
+
+					$this->db->trans_commit();
+
+					/*
+					 * HAPUS FOLDER LAMA SETELAH TRANSAKSI BERHASIL
+					 */
+
+					if (
+						$isEdit &&
+						!empty($folderLama) &&
+						$folderLama !== $folder
+					) {
+						$this->_hapusFolderDigital($folderLama);
+					}
+
+					/*
+					 * HAPUS SESSION UPLOAD
+					 */
+
+					$this->session->unset_userdata([
+						'digital_canvas_folder',
+						'digital_canvas_nomor'
 					]);
+
+					return $this->_digitalJson(
+						true,
+						$pesan,
+						[
+							'total_hal' => $totalHalaman,
+							'folder' => $folder
+						]
+					);
 				}
 
-				throw new Exception('Perintah upload tidak dikenal.');
+				throw new Exception(
+					'Perintah upload tidak dikenal.'
+				);
 
 			} catch (Throwable $e) {
-				log_message('error', 'Proses buku digital: ' . $e->getMessage());
 
-				return $this->_digitalJson(false, $e->getMessage(), [], 400);
+				log_message(
+					'error',
+					'Proses buku digital: ' . $e->getMessage()
+				);
+
+				return $this->_digitalJson(
+					false,
+					$e->getMessage(),
+					[],
+					400
+				);
 			}
 		}
 
+
 		/*
+		 * ==========================================
 		 * HAPUS BUKU DIGITAL
+		 * ==========================================
 		 */
+
 		$hapusId = $this->input->get('buku_id', true);
 
 		if ($hapusId) {
+
 			$buku = $this->db
-				->get_where('tbl_buku_digital', ['id_buku' => (int) $hapusId])
+				->get_where(
+					'tbl_buku_digital',
+					[
+						'id_buku' => (int) $hapusId
+					]
+				)
 				->row();
 
 			if ($buku) {
-				$this->db->where('id_buku', (int) $hapusId);
-				$hapus = $this->db->delete('tbl_buku_digital');
+
+				$this->db->where(
+					'id_buku',
+					(int) $hapusId
+				);
+
+				$hapus = $this->db->delete(
+					'tbl_buku_digital'
+				);
 
 				if ($hapus) {
+
 					if (!empty($buku->lampiran)) {
 						$this->_hapusFolderDigital($buku->lampiran);
 					}
 
-					$this->session->set_flashdata('pesan', 'Buku digital berhasil dihapus.');
+					$this->session->set_flashdata(
+						'pesan',
+						'Buku digital berhasil dihapus.'
+					);
+
 				} else {
-					$this->session->set_flashdata('pesan', 'Buku digital gagal dihapus.');
+
+					$this->session->set_flashdata(
+						'pesan',
+						'Buku digital gagal dihapus.'
+					);
 				}
+
 			} else {
-				$this->session->set_flashdata('pesan', 'Data buku tidak ditemukan.');
+
+				$this->session->set_flashdata(
+					'pesan',
+					'Data buku tidak ditemukan.'
+				);
 			}
 
 			redirect('data/bukudigital');
@@ -741,41 +1099,63 @@ class Data extends CI_Controller
 	}
 
 
-	/**
-	 * Membuat respons JSON sekaligus mengirim token CSRF terbaru.
+	/*
+	 * ==========================================
+	 * JSON RESPONSE
+	 * ==========================================
 	 */
-	private function _digitalJson($status, $pesan, $tambahan = [], $httpCode = 200)
-	{
-		$hasil = array_merge([
-			'status' => (bool) $status,
-			'pesan' => $pesan,
-			'csrf_name' => $this->security->get_csrf_token_name(),
-			'csrf_hash' => $this->security->get_csrf_hash()
-		], $tambahan);
+
+	private function _digitalJson(
+		$status,
+		$pesan,
+		$tambahan = [],
+		$httpCode = 200
+	) {
+
+		$hasil = array_merge(
+			[
+				'status' => (bool) $status,
+				'pesan' => $pesan,
+				'message' => $pesan,
+				'csrf_name' => $this->security->get_csrf_token_name(),
+				'csrf_hash' => $this->security->get_csrf_hash()
+			],
+			$tambahan
+		);
 
 		$this->output
 			->set_status_header($httpCode)
 			->set_content_type('application/json', 'utf-8')
-			->set_output(json_encode($hasil));
+			->set_output(
+				json_encode($hasil)
+			);
 
 		return;
 	}
 
 
-	/**
-	 * Menghapus folder halaman buku digital.
-	 * Hanya menerima nama folder, bukan path bebas.
+	/*
+	 * ==========================================
+	 * HAPUS FOLDER DIGITAL
+	 * ==========================================
 	 */
+
 	private function _hapusFolderDigital($folder)
 	{
+		/*
+		 * Hanya menerima nama folder digital.
+		 * Tidak menerima path bebas.
+		 */
+
 		if (
 			empty($folder) ||
-			!preg_match('/^(digital_[a-f0-9]{24}|[a-zA-Z0-9_-]+)$/', $folder)
+			!preg_match('/^digital_[a-f0-9]{24}$/', $folder)
 		) {
 			return false;
 		}
 
 		$basePath = FCPATH . 'assets_style/image/buku/lampiran/';
+
 		$folderPath = $basePath . $folder;
 
 		if (!is_dir($folderPath)) {
@@ -784,17 +1164,49 @@ class Data extends CI_Controller
 
 		$files = scandir($folderPath);
 
+		if ($files === false) {
+			return false;
+		}
+
 		foreach ($files as $file) {
+
 			if ($file === '.' || $file === '..') {
 				continue;
 			}
 
 			$path = $folderPath . DIRECTORY_SEPARATOR . $file;
 
-			if (is_file($path)) {
-				unlink($path);
+			if (is_file($path) || is_link($path)) {
+
+				if (!unlink($path)) {
+					return false;
+				}
+
 			} elseif (is_dir($path)) {
-				$this->_hapusFolderDigital($folder . '/' . $file);
+
+				// Hanya menghapus subfolder di dalam folder digital.
+				$subFiles = scandir($path);
+
+				if ($subFiles === false) {
+					return false;
+				}
+
+				foreach ($subFiles as $subFile) {
+
+					if ($subFile === '.' || $subFile === '..') {
+						continue;
+					}
+
+					$subPath = $path . DIRECTORY_SEPARATOR . $subFile;
+
+					if (is_file($subPath) || is_link($subPath)) {
+						unlink($subPath);
+					}
+				}
+
+				if (!rmdir($path)) {
+					return false;
+				}
 			}
 		}
 
@@ -802,23 +1214,36 @@ class Data extends CI_Controller
 	}
 
 
-	/**
-	 * Membuat kode buku digital otomatis.
-	 * Format: BD0001, BD0002, dan seterusnya.
+	/*
+	 * ==========================================
+	 * GENERATE KODE BUKU DIGITAL
+	 * ==========================================
 	 */
+
 	private function _buatKodeDigital()
 	{
 		$query = $this->db->query("
-        SELECT MAX(CAST(SUBSTRING(kode_buku, 3) AS UNSIGNED)) AS nomor
+        SELECT MAX(
+            CAST(SUBSTRING(kode_buku, 3) AS UNSIGNED)
+        ) AS nomor
         FROM tbl_buku_digital
         WHERE kode_buku REGEXP '^BD[0-9]+$'
     ");
 
 		$row = $query->row();
-		$nomor = ($row && $row->nomor) ? ((int) $row->nomor + 1) : 1;
 
-		return 'BD' . str_pad($nomor, 4, '0', STR_PAD_LEFT);
+		$nomor = ($row && $row->nomor)
+			? ((int) $row->nomor + 1)
+			: 1;
+
+		return 'BD' . str_pad(
+			$nomor,
+			4,
+			'0',
+			STR_PAD_LEFT
+		);
 	}
+
 
 
 
