@@ -75,11 +75,11 @@ $query_builder = TRUE;
 
 $db['default'] = array(
     'dsn'      => '',
-    'hostname' => 'mysql',
-    'username' => 'ci3user',
-    'password' => 'GantiPasswordDB123!',
-    'database' => 'db_perpustakaan',
-    'dbdriver' => 'mysqli',
+    'hostname' => 'ci3_mysql',
+	'username' => 'ci3user',
+	'password' => 'DBBaru123!',
+	'database' => 'db_perpustakaan',
+	'dbdriver' => 'mysqli',
     'dbprefix' => '',
     'pconnect' => FALSE,
     'db_debug' => TRUE,

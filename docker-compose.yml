@@ -21,17 +21,17 @@ services:
     container_name: ci3_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: GantiPasswordRoot123!
+      MYSQL_ROOT_PASSWORD: RootBaru123!
       MYSQL_DATABASE: db_perpustakaan
       MYSQL_USER: ci3user
-      MYSQL_PASSWORD: GantiPasswordDB123!
+      MYSQL_PASSWORD: DBBaru123!
       TZ: Asia/Jakarta
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - ci3_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pGantiPasswordRoot123!"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pRootBaru123!"]
       interval: 10s
       timeout: 5s
       retries: 10
