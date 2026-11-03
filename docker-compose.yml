@@ -37,6 +37,19 @@ services:
       retries: 10
       start_period: 30s
 
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: ci3_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: ci3_mysql
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 128M
+    networks:
+      - ci3_network
+
 volumes:
   perpustakaan_db_baru:
 
