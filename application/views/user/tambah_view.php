@@ -1,4 +1,5 @@
-<?php if (!defined('BASEPATH')) exit('No direct script acess allowed'); ?>
+<?php if (!defined('BASEPATH'))
+    exit('No direct script acess allowed'); ?>
 <div class="content-wrapper">
     <section class="content-header">
         <h1>
@@ -10,7 +11,9 @@
         </ol>
     </section>
     <section class="content">
-	<?php if(!empty($this->session->flashdata())){ echo $this->session->flashdata('pesan');}?>
+        <?php if (!empty($this->session->flashdata())) {
+            echo $this->session->flashdata('pesan');
+        } ?>
         <div class="row">
             <div class="col-md-12">
                 <div class="box box-primary">
@@ -21,12 +24,13 @@
                         <form action="<?php echo base_url('user/add'); ?>" method="POST" enctype="multipart/form-data">
                             <div class="row">
                                 <div class="col-sm-12">
-                                  
+
                                     <div class="form-group">
                                         <label>Nama Siswa</label>
-                                        <input type="text" class="form-control" name="nama" required="required" placeholder="Nama Siswa">
+                                        <input type="text" class="form-control" name="nama" required="required"
+                                            placeholder="Nama Siswa">
                                     </div>
-                                 
+
                                     <div class="form-group">
                                         <label for="jenkel">Jenis Kelamin</label>
                                         <select class="form-control" name="jenkel" id="jenkel">
@@ -34,14 +38,24 @@
                                             <option value="Perempuan">Perempuan</option>
                                         </select>
                                     </div>
-                                   
+
                                 </div>
-                               
+
                             </div>
                             <div class="pull-right">
-                                <button type="submit" class="btn btn-primary btn-md">Submit</button>
+                                <button type="submit" class="btn btn-primary btn-md">
+                                    <i class="fa fa-save"></i> Submit
+                                </button>
+
+                                <a href="<?= base_url('user/import'); ?>" class="btn btn-success btn-md">
+                                    <i class="fa fa-file-excel-o"></i> Import Excel
+                                </a>
+
+                                <a href="<?= base_url('user'); ?>" class="btn btn-danger btn-md">
+                                    <i class="fa fa-arrow-left"></i> Kembali
+                                </a>
+                            </div>
                         </form>
-                        <a href="<?= base_url('user'); ?>" class="btn btn-danger btn-md">Kembali</a>
                     </div>
                 </div>
             </div>

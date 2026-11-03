@@ -20,7 +20,7 @@ class User extends CI_Controller
 	{
 		$this->data['idbo'] = $this->session->userdata('ses_id');
 		// $this->data['user'] = $this->M_Admin->get_table('tbl_siswa');
-		$this->data['user'] =  $this->db->query("SELECT * FROM tbl_siswa ORDER BY kode_anggota")->result_array();
+		$this->data['user'] = $this->db->query("SELECT * FROM tbl_siswa ORDER BY kode_anggota")->result_array();
 
 		$this->data['title_web'] = 'Data Siswa ';
 		$this->load->view('header_view', $this->data);
@@ -97,10 +97,10 @@ class User extends CI_Controller
 	}
 
 	public function print_full()
-{
-    $this->data['title_web'] = 'Cetak Kartu Siswa Full';
-    $this->load->view('user/print_full');
-}
+	{
+		$this->data['title_web'] = 'Cetak Kartu Siswa Full';
+		$this->load->view('user/print_full');
+	}
 
 
 
@@ -147,8 +147,8 @@ class User extends CI_Controller
 			echo '<script>alert("halaman tidak ditemukan");window.location="' . base_url('user') . '";</script>';
 		}
 
-		$siswa =  $this->db->query("SELECT * FROM `tbl_siswa` WHERE `id_siswa` = '" . $this->uri->segment('3') . "'")->result_array();
-		$count =  $this->db->query("SELECT * FROM `tbl_pinjam` WHERE `anggota_id` = '" . $siswa[0]['kode_anggota'] . "'")->result_array();
+		$siswa = $this->db->query("SELECT * FROM `tbl_siswa` WHERE `id_siswa` = '" . $this->uri->segment('3') . "'")->result_array();
+		$count = $this->db->query("SELECT * FROM `tbl_pinjam` WHERE `anggota_id` = '" . $siswa[0]['kode_anggota'] . "'")->result_array();
 		if ((count($count)) > 0) {
 
 			$this->session->set_flashdata('pesan', '<div id="notifikasi"><div class="alert alert-danger">
@@ -167,39 +167,116 @@ class User extends CI_Controller
 
 
 	public function printqrcode()
-{
-    $this->data['title_web'] = 'Cetak QR Code Siswa';
+	{
+		$this->data['title_web'] = 'Cetak QR Code Siswa';
 
-    $ids = $this->input->get('id');
+		$ids = $this->input->get('id');
 
-    if (empty($ids)) {
-        show_error('Pilih siswa terlebih dahulu untuk mencetak QR Code.', 400);
-        return;
-    }
+		if (empty($ids)) {
+			show_error('Pilih siswa terlebih dahulu untuk mencetak QR Code.', 400);
+			return;
+		}
 
-    $ids = explode(',', $ids);
+		$ids = explode(',', $ids);
 
-    $ids = array_values(array_unique(array_filter($ids, function ($id) {
-        return ctype_digit((string) $id) && (int) $id > 0;
-    })));
+		$ids = array_values(array_unique(array_filter($ids, function ($id) {
+			return ctype_digit((string) $id) && (int) $id > 0;
+		})));
 
-    if (empty($ids)) {
-        show_error('ID siswa tidak valid.', 400);
-        return;
-    }
+		if (empty($ids)) {
+			show_error('ID siswa tidak valid.', 400);
+			return;
+		}
 
-    $this->db->where_in('id_siswa', $ids);
-    $this->db->order_by('kode_anggota', 'ASC');
+		$this->db->where_in('id_siswa', $ids);
+		$this->db->order_by('kode_anggota', 'ASC');
 
-    // Sesuaikan nama tabel jika tabel siswa Anda berbeda.
-    $this->data['siswa'] = $this->db->get('tbl_siswa')->result_array();
+		// Sesuaikan nama tabel jika tabel siswa Anda berbeda.
+		$this->data['siswa'] = $this->db->get('tbl_siswa')->result_array();
 
-    if (empty($this->data['siswa'])) {
-        show_error('Data siswa tidak ditemukan.', 404);
-        return;
-    }
+		if (empty($this->data['siswa'])) {
+			show_error('Data siswa tidak ditemukan.', 404);
+			return;
+		}
 
-    $this->load->view('user/print_qrcode', $this->data);
-}
+		$this->load->view('user/print_qrcode', $this->data);
+	}
+
+
+	public function import()
+	{
+		$this->data['idbo'] = $this->session->userdata('ses_id');
+
+		$this->data['title_web'] = 'Import Data Siswa';
+
+		$this->load->view('header_view', $this->data);
+		$this->load->view('sidebar_view', $this->data);
+		$this->load->view('user/import', $this->data);
+		$this->load->view('footer_view', $this->data);
+	}
+
+
+
+	public function import_save()
+	{
+		// Pastikan request menggunakan AJAX
+		if (!$this->input->is_ajax_request()) {
+			show_404();
+			return;
+		}
+
+		// Ambil data dari AJAX
+		$nama = trim($this->input->post('nama', TRUE));
+		$jenkel = trim($this->input->post('jenkel', TRUE));
+
+		// Validasi nama
+		if (empty($nama)) {
+			echo json_encode([
+				'status' => false,
+				'message' => 'Nama siswa tidak boleh kosong.'
+			]);
+			return;
+		}
+
+		// Validasi jenis kelamin
+		if (!in_array($jenkel, ['Laki-Laki', 'Perempuan'], TRUE)) {
+			echo json_encode([
+				'status' => false,
+				'message' => 'Jenis kelamin tidak valid.'
+			]);
+			return;
+		}
+
+		// Samakan mekanisme pembuatan kode dengan method add()
+		$kode_anggota = $this->M_Admin->buat_kode_siswa(
+			'tbl_siswa',
+			'ORDER BY kode_anggota DESC LIMIT 1'
+		);
+
+		// Susunan data mengikuti method add()
+		$data = array(
+			'id_siswa' => '',
+			'kode_anggota' => $kode_anggota,
+			'nama' => $nama,
+			'jenkel' => $jenkel,
+			'tgl_bergabung' => date('Y-m-d')
+		);
+
+		// Simpan ke database
+		$insert = $this->db->insert('tbl_siswa', $data);
+
+		if ($insert) {
+			echo json_encode([
+				'status' => true,
+				'message' => 'Data siswa berhasil disimpan.',
+				'kode_anggota' => $kode_anggota
+			]);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'message' => 'Data siswa gagal disimpan.'
+			]);
+		}
+	}
 
 }
