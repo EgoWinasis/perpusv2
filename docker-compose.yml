@@ -27,7 +27,7 @@ services:
       MYSQL_PASSWORD: DBBaru123!
       TZ: Asia/Jakarta
     volumes:
-      - mysql_data:/var/lib/mysql
+      - perpustakaan_db_baru:/var/lib/mysql
     networks:
       - ci3_network
     healthcheck:
@@ -38,7 +38,7 @@ services:
       start_period: 30s
 
 volumes:
-  mysql_data:
+  perpustakaan_db_baru:
 
 networks:
   ci3_network:
