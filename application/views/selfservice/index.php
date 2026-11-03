@@ -266,15 +266,77 @@ body {
 .scan-control-btn:disabled { opacity:.55; cursor:not-allowed; }
 .scan-help { font-size:12px; line-height:1.4; color:#555; text-align:center; }
 .scan-status { height:27px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#666; white-space:nowrap; overflow:hidden; }
-.scan-overlay { position:fixed; inset:0; z-index:100000; display:none; flex-direction:column; background:#07111f; color:#fff; padding:16px; }
-.scan-overlay.open { display:flex; }
-.scan-overlay-header { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:48px; }
-.scan-overlay-title { font-size:20px; font-weight:bold; }
-.scan-overlay-content { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-#reader { width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-#reader video { width:100% !important; height:100% !important; max-width:100% !important; max-height:100% !important; object-fit:contain !important; border-radius:8px !important; }
+.scan-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(7, 17, 31, .62);
+    color: #fff;
+}
+.scan-overlay.open { display: flex; }
+/* Popup kamera berukuran sedang, bukan memenuhi seluruh monitor. */
+.scan-popup {
+    width: min( min(760px, 92vw), 100% );
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 14px;
+    background: #07111f;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 16px;
+    box-shadow: 0 18px 55px rgba(0,0,0,.38);
+}
+.scan-overlay-header { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; }
+.scan-overlay-title { font-size:18px; font-weight:bold; }
+.scan-overlay-content {
+    width: 100%;
+    height: min( min( min(52vh, 430px), 62vw ), 430px );
+    min-height: 190px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    background:#000;
+    border-radius:10px;
+}
+/* Seluruh frame kamera dipakai; tidak ada qrbox atau batas persegi. */
+#reader {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+#reader > div { width:100% !important; max-width:100% !important; }
+#reader video {
+    display:block !important;
+    width:100% !important;
+    height:100% !important;
+    max-width:100% !important;
+    max-height:100% !important;
+    object-fit:contain !important;
+    image-rendering:auto;
+    border-radius:8px !important;
+}
+#reader__scan_region { width:100% !important; min-height:0 !important; }
 #reader__dashboard_section_swaplink { display:none !important; }
-.scan-overlay-footer { text-align:center; padding:12px 4px; font-size:14px; color:#dbeafe; }
+.scan-overlay-footer { text-align:center; padding:10px 4px 2px; font-size:13px; color:#dbeafe; }
+@media (max-width: 600px) {
+    .scan-overlay { padding:10px; }
+    .scan-popup { width:96vw; max-height:90vh; padding:10px; }
+    .scan-overlay-header { min-height:40px; }
+    .scan-overlay-title { font-size:16px; }
+    .scan-overlay-content { height: min( min( min(48vh, 360px), 88vw ), 360px ); min-height:170px; }
+    .scan-control-btn { height:36px; padding:0 10px; font-size:12px; }
+}
 
 .scan-status {
 
@@ -1453,16 +1515,18 @@ and (max-height: 700px) {
 
 <!-- POPUP SCANNER FULL SCREEN -->
 <div id="scanOverlay" class="scan-overlay" role="dialog" aria-modal="true" aria-label="Pemindai QR Code">
-    <div class="scan-overlay-header">
-        <div class="scan-overlay-title" id="scanOverlayTitle">📷 Scan Anggota</div>
-        <button type="button" id="btnStopScanner" class="scan-control-btn btn-stop-scan">
-            <i class="fa fa-times"></i> TUTUP KAMERA
-        </button>
+    <div class="scan-popup">
+        <div class="scan-overlay-header">
+            <div class="scan-overlay-title" id="scanOverlayTitle">📷 Scan Anggota</div>
+            <button type="button" id="btnStopScanner" class="scan-control-btn btn-stop-scan">
+                <i class="fa fa-times"></i> TUTUP KAMERA
+            </button>
+        </div>
+        <div class="scan-overlay-content">
+            <div id="reader"></div>
+        </div>
+        <div class="scan-overlay-footer" id="scanOverlayStatus">Arahkan QR Code ke kamera</div>
     </div>
-    <div class="scan-overlay-content">
-        <div id="reader"></div>
-    </div>
-    <div class="scan-overlay-footer" id="scanOverlayStatus">Arahkan QR Code ke kamera</div>
 </div>
 
 <!-- =========================================================
@@ -2194,13 +2258,16 @@ $(document).ready(function() {
 
     function onScanSuccess(decodedText) {
         if (!scannerAktif || sedangScan || sedangProses) return;
+
         decodedText = $.trim(decodedText || '');
         if (decodedText === '') return;
 
         sedangScan = true;
+        scannerAktif = false;
+
         var modeSaatScan = scanStep;
 
-        // Tutup popup dan hentikan kamera segera setelah QR terbaca.
+        // Hentikan kamera setelah QR berhasil dibaca.
         stopScanner();
 
         if (modeSaatScan === 'anggota') {
@@ -2211,8 +2278,47 @@ $(document).ready(function() {
             cekBuku(decodedText);
         }
 
-        setTimeout(function() { sedangScan = false; }, 1200);
+        setTimeout(function() {
+            sedangScan = false;
+        }, 1200);
     }
+
+
+    /* =====================================================
+       RESPONSIVE POPUP - MONITOR WIDE / DEVTOOLS
+    ===================================================== */
+    (function() {
+        var resizeTimer = null;
+        var readerElement = document.getElementById('reader');
+        var scanContent = document.querySelector('.scan-overlay-content');
+
+        function sesuaikanTampilanScanner() {
+            if (!readerElement || !$('#scanOverlay').hasClass('open')) return;
+
+            // Memicu browser menghitung ulang layout setelah viewport berubah.
+            // Stream kamera tidak dihentikan dan tidak dimulai ulang.
+            readerElement.style.width = '100%';
+            readerElement.style.height = '100%';
+            var video = readerElement.querySelector('video');
+            if (video) {
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'contain';
+            }
+        }
+
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(sesuaikanTampilanScanner, 180);
+        });
+
+        if (window.ResizeObserver && scanContent) {
+            var observer = new ResizeObserver(function() {
+                sesuaikanTampilanScanner();
+            });
+            observer.observe(scanContent);
+        }
+    })();
 
 
     /* =====================================================
@@ -2220,15 +2326,12 @@ $(document).ready(function() {
     ===================================================== */
 
     function onScanError(error) {
-
-        // Jangan tampilkan error setiap frame kamera.
-
+        // Error per frame tidak ditampilkan agar tidak mengganggu pengguna.
     }
 
 
-
     /* =====================================================
-       START SCANNER
+       PILIH KAMERA
     ===================================================== */
 
     function pilihKameraMTech() {
@@ -2237,84 +2340,181 @@ $(document).ready(function() {
                 throw new Error('Tidak ada kamera yang terdeteksi.');
             }
 
-            // Prioritaskan kamera eksternal M-Tech WB300 jika nama perangkat terbaca.
+            // Prioritaskan M-Tech WB300.
             var kameraMtech = cameras.find(function(camera) {
                 return /m[- ]?tech|mtech/i.test(camera.label || '');
             });
+
             if (kameraMtech) return kameraMtech;
 
-            // Pada beberapa browser nama webcam hanya tampil sebagai USB/HD/Webcam.
+            // Jika nama M-Tech tidak terbaca, cari webcam eksternal.
             var kameraEksternal = cameras.find(function(camera) {
                 return /usb|webcam|external|hd camera/i.test(camera.label || '');
             });
+
             return kameraEksternal || cameras[0];
         });
     }
+
+
+    /* =====================================================
+       START SCANNER - OPTIMASI WEBCAM PC/LAPTOP
+    ===================================================== */
 
     function startScanner(mode) {
         if (scannerAktif || scanner !== null) return;
 
         scanStep = mode;
-        $('#scanOverlayTitle').text(mode === 'anggota' ? '👤 Scan Anggota' : '📖 Scan Buku');
-        $('#scanOverlayStatus').text('Mendeteksi webcam M-Tech WB300...');
+
+        $('#scanOverlayTitle').text(
+            mode === 'anggota' ? '👤 Scan Anggota' : '📖 Scan Buku'
+        );
+
+        $('#scanOverlayStatus').text('Mendeteksi webcam...');
         $('#scanOverlay').addClass('open').show();
         $('#reader').empty();
 
         pilihKameraMTech().then(function(camera) {
-            // Aktifkan pembaca QR dan barcode yang umum digunakan pada kartu/buku.
-            var formats = [
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E
-            ];
-
+            // Untuk pengujian dan kestabilan webcam, fokuskan decoder pada QR_CODE.
             scanner = new Html5Qrcode('reader', {
-                formatsToSupport: formats,
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.QR_CODE
+                ],
                 verbose: false
             });
 
-            $('#scanOverlayStatus').text('Kamera: ' + (camera.label || 'Webcam terpilih') + '. Arahkan kode ke tengah kamera.');
+            $('#scanOverlayStatus').text(
+                'Kamera: ' + (camera.label || 'Webcam terpilih') +
+                '. Dekatkan QR Code dan pastikan gambar fokus.'
+            );
+
+            // Set sebelum start agar callback tidak terlewat pada webcam yang cepat.
+            scannerAktif = true;
 
             return scanner.start(
-                camera.id,
+                { deviceId: { exact: camera.id } },
                 {
-                    fps: 12,
-                    aspectRatio: 4 / 3,
-                    qrbox: function(width, height) {
-                        // Area lebar membantu membaca QR maupun barcode 1D pada resolusi VGA.
-                        return {
-                            width: Math.min(320, Math.floor(width * 0.85)),
-                            height: Math.min(220, Math.floor(height * 0.65))
-                        };
-                    },
+                    fps: 30,
+                    // Tidak menetapkan aspectRatio / qrbox. Biarkan browser
+                    // memakai rasio asli webcam dan decoder membaca seluruh frame.
                     disableFlip: true
                 },
                 onScanSuccess,
                 onScanError
             );
         }).then(function() {
-            scannerAktif = true;
-            $('#scanOverlayStatus').text('Arahkan QR Code/barcode ' + (mode === 'anggota' ? 'kartu anggota' : 'buku') + ' ke tengah kamera.');
-            status('📷 M-Tech WB300 aktif • Mode scan ' + (mode === 'buku' ? 'BUKU' : 'ANGGOTA'));
+            // Tunggu sampai elemen video benar-benar menerima frame kamera.
+            // Jeda ini menggantikan efek 'menunggu' yang sebelumnya muncul
+            // ketika Developer Console dibuka.
+            return new Promise(function(resolve) {
+                var videoElement = document.querySelector('#reader video');
+                if (!videoElement) {
+                    setTimeout(resolve, 1000);
+                    return;
+                }
+
+                var selesai = false;
+                function lanjut() {
+                    if (selesai) return;
+                    selesai = true;
+                    videoElement.removeEventListener('loadeddata', lanjut);
+                    videoElement.removeEventListener('playing', lanjut);
+                    // Beri waktu tambahan agar beberapa frame kamera stabil.
+                    setTimeout(resolve, 800);
+                }
+
+                if (videoElement.readyState >= 2) {
+                    lanjut();
+                } else {
+                    videoElement.addEventListener('loadeddata', lanjut, { once: true });
+                    videoElement.addEventListener('playing', lanjut, { once: true });
+                    setTimeout(lanjut, 3000);
+                }
+            });
+        }).then(function() {
+            // Terapkan ulang resolusi dan fokus setelah stream kamera aktif.
+            // Tidak semua webcam/browser mendukung seluruh properti; kegagalan
+            // properti opsional tidak akan menghentikan scanner.
+            try {
+                var videoElement = document.querySelector('#reader video');
+                var videoTrack = videoElement &&
+                    videoElement.srcObject &&
+                    videoElement.srcObject.getVideoTracks()[0];
+
+                if (videoTrack && videoTrack.applyConstraints) {
+                    var highQualityConstraints = {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 30, max: 30 },
+                        advanced: [
+                            { focusMode: 'continuous' },
+                            { exposureMode: 'continuous' },
+                            { whiteBalanceMode: 'continuous' }
+                        ]
+                    };
+
+                    videoTrack.applyConstraints(highQualityConstraints)
+                        .then(function() {
+                            var settings = videoTrack.getSettings ?
+                                videoTrack.getSettings() : {};
+
+                            $('#scanOverlayStatus').text(
+                                'Kamera aktif ' +
+                                (settings.width || '?') + ' × ' +
+                                (settings.height || '?') +
+                                ' • Arahkan QR ke tengah kamera'
+                            );
+                        })
+                        .catch(function(error) {
+                            console.warn(
+                                'Kamera tidak mendukung semua pengaturan kualitas:',
+                                error
+                            );
+                        });
+                }
+            } catch (qualityError) {
+                console.warn('Pengaturan kualitas kamera dilewati:', qualityError);
+            }
+
+            $('#scanOverlayStatus').text(
+                'Arahkan QR Code ' +
+                (mode === 'anggota' ? 'kartu anggota' : 'buku') +
+                ' ke tengah kamera. Pastikan fokus, pencahayaan cukup, dan QR tidak memantul.'
+            );
+
+            status(
+                '📷 Webcam aktif • Mode scan ' +
+                (mode === 'buku' ? 'BUKU' : 'ANGGOTA')
+            );
         }).catch(function(error) {
             scannerAktif = false;
+
             var oldScanner = scanner;
             scanner = null;
+
             if (oldScanner) {
                 try {
-                    if (oldScanner.isScanning) oldScanner.stop().then(function() { oldScanner.clear(); }).catch(function() {});
-                    else oldScanner.clear();
+                    if (oldScanner.isScanning) {
+                        oldScanner.stop().then(function() {
+                            oldScanner.clear();
+                        }).catch(function() {});
+                    } else {
+                        oldScanner.clear();
+                    }
                 } catch (e) {}
             }
+
             $('#scanOverlay').removeClass('open').hide();
             $('#reader').empty();
-            status('⚠️ Kamera tidak tersedia • Gunakan input manual');
+
+            status('⚠️ Kamera bermasalah • Gunakan input manual');
+
             console.error('Scanner error:', error);
-            alert('Kamera tidak dapat diakses. Pastikan M-Tech WB300 terhubung, izin kamera browser diberikan, dan halaman dibuka melalui localhost atau HTTPS.');
+
+            alert(
+                'Scanner gagal dijalankan: ' +
+                (error && error.message ? error.message : error)
+            );
         });
     }
 
