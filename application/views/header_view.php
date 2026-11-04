@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title><?php echo $title_web; ?> | Sistem Informasi Perpustakaan Kampus Mengajar 5 </title>
+  <title><?php echo $title_web; ?> | Sistem Informasi Perpustakaan </title>
   <!-- Tell the browser to be responsive to screen width -->
 
 
@@ -77,9 +77,9 @@
       <!-- Logo -->
       <a href="<?php echo base_url('index.php/dashboard'); ?>" class="logo">
         <!-- mini logo for sidebar mini 50x50 pixels -->
-        <span class="logo-mini"><b>KM5</b></span>
+        <span class="logo-mini"><b>Perpus</b></span>
         <!-- logo for regular state and mobile devices -->
-        <span class="logo-lg">Perpus KM5</span>
+        <span class="logo-lg">Perpus</span>
       </a>
       <!-- Header Navbar: style can be found in header.less -->
       <nav class="navbar navbar-static-top">

@@ -293,6 +293,17 @@ body {
 }
 .scan-overlay-header { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; }
 .scan-overlay-title { font-size:18px; font-weight:bold; }
+.camera-settings {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    margin:10px 0; width:100%;
+}
+.camera-select {
+    flex:1; min-width:180px; height:40px; padding:0 10px;
+    border:1px solid rgba(255,255,255,.25); border-radius:8px;
+    background:#14243a; color:#fff; font-size:13px; outline:none;
+}
+.btn-mirror { background:#455a64; white-space:nowrap; }
+#reader video.mirror-camera { transform:scaleX(-1) !important; }
 .scan-overlay-content {
     width: 100%;
     height: min( min( min(52vh, 430px), 62vw ), 430px );
@@ -1522,6 +1533,14 @@ and (max-height: 700px) {
                 <i class="fa fa-times"></i> TUTUP KAMERA
             </button>
         </div>
+        <div class="camera-settings">
+            <select id="cameraSelect" class="camera-select" aria-label="Pilih kamera">
+                <option value="">Mendeteksi kamera...</option>
+            </select>
+            <button type="button" id="btnMirror" class="scan-control-btn btn-mirror">
+                <i class="fa fa-exchange"></i> CERMIN: MATI
+            </button>
+        </div>
         <div class="scan-overlay-content">
             <div id="reader"></div>
         </div>
@@ -1591,6 +1610,9 @@ $(document).ready(function() {
 
     var scanner = null;
     var scannerAktif = false;
+    var daftarKamera = [];
+    var kameraTerpilihId = '';
+    var mirrorAktif = false;
 
 
 
@@ -2340,21 +2362,48 @@ $(document).ready(function() {
                 throw new Error('Tidak ada kamera yang terdeteksi.');
             }
 
-            // Prioritaskan M-Tech WB300.
-            var kameraMtech = cameras.find(function(camera) {
-                return /m[- ]?tech|mtech/i.test(camera.label || '');
+            daftarKamera = cameras;
+            var $select = $('#cameraSelect');
+            var pilihanSebelumnya = kameraTerpilihId || $select.val();
+            $select.empty();
+
+            cameras.forEach(function(camera, index) {
+                var nama = camera.label || ('Kamera ' + (index + 1));
+                $('<option></option>').val(camera.id).text(nama).appendTo($select);
             });
 
-            if (kameraMtech) return kameraMtech;
-
-            // Jika nama M-Tech tidak terbaca, cari webcam eksternal.
-            var kameraEksternal = cameras.find(function(camera) {
-                return /usb|webcam|external|hd camera/i.test(camera.label || '');
+            // Utamakan kamera yang sebelumnya dipilih, kemudian M-Tech WB300,
+            // webcam USB/eksternal, lalu kamera pertama yang tersedia.
+            var pilihan = cameras.find(function(camera) {
+                return camera.id === pilihanSebelumnya;
             });
-
-            return kameraEksternal || cameras[0];
+            if (!pilihan) {
+                pilihan = cameras.find(function(camera) {
+                    return /m[- ]?tech|mtech/i.test(camera.label || '');
+                });
+            }
+            if (!pilihan) {
+                pilihan = cameras.find(function(camera) {
+                    return /usb|webcam|external|hd camera/i.test(camera.label || '');
+                });
+            }
+            pilihan = pilihan || cameras[0];
+            kameraTerpilihId = pilihan.id;
+            $select.val(pilihan.id);
+            return pilihan;
         });
     }
+
+    function terapkanMirror() {
+        var video = document.querySelector('#reader video');
+        if (!video) return;
+        if (mirrorAktif) {
+            video.classList.add('mirror-camera');
+        } else {
+            video.classList.remove('mirror-camera');
+        }
+    }
+
 
 
     /* =====================================================
@@ -2432,6 +2481,9 @@ $(document).ready(function() {
                 }
             });
         }).then(function() {
+            // Terapkan tampilan cermin setelah elemen video dibuat.
+            terapkanMirror();
+
             // Terapkan ulang resolusi dan fokus setelah stream kamera aktif.
             // Tidak semua webcam/browser mendukung seluruh properti; kegagalan
             // properti opsional tidak akan menghentikan scanner.
@@ -2522,6 +2574,37 @@ $(document).ready(function() {
     /* =====================================================
        TOMBOL CEK
     ===================================================== */
+
+    // Ganti kamera tanpa menutup popup scanner.
+    $('#cameraSelect').on('change', function() {
+        var cameraId = $(this).val();
+        if (!cameraId || cameraId === kameraTerpilihId && scannerAktif) return;
+        kameraTerpilihId = cameraId;
+
+        if (!scanner) return;
+        var oldScanner = scanner;
+        scanner = null;
+        scannerAktif = false;
+        $('#scanOverlayStatus').text('Mengganti kamera...');
+
+        var stopPromise = oldScanner.isScanning ? oldScanner.stop() : Promise.resolve();
+        stopPromise.catch(function(error) {
+            console.warn('Peringatan saat menghentikan kamera lama:', error);
+        }).then(function() {
+            try { oldScanner.clear(); } catch (e) {}
+            $('#reader').empty();
+            startScanner(scanStep);
+        });
+    });
+
+    // Tombol cermin hanya membalik tampilan video, bukan hasil pembacaan QR.
+    $('#btnMirror').on('click', function() {
+        mirrorAktif = !mirrorAktif;
+        $(this).html(mirrorAktif
+            ? '<i class="fa fa-exchange"></i> CERMIN: HIDUP'
+            : '<i class="fa fa-exchange"></i> CERMIN: MATI');
+        terapkanMirror();
+    });
 
     $('#btnScanAnggota').on('click', function() {
         startScanner('anggota');
