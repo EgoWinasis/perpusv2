@@ -23,10 +23,16 @@ date_default_timezone_set("Asia/Jakarta");
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = (
+$is_https = (
     (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
-) ? 'https://' : 'http://';
+    || (
+        isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
+        && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https'
+    )
+);
+
+$config['base_url'] = ($is_https ? 'https://' : 'http://');
 
 $config['base_url'] .= $_SERVER['HTTP_HOST'];
 
@@ -35,7 +41,6 @@ $config['base_url'] .= preg_replace(
     '',
     dirname($_SERVER['SCRIPT_NAME'])
 ) . '/';
-
 /*
 |--------------------------------------------------------------------------
 | Index File
